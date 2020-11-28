@@ -1,7 +1,7 @@
 # iSH-VNC服务配置管理脚本
 <p align="center">
 <a href="https://ish.app">
-<img src="https://user-images.githubusercontent.com/31967654/96362311-f5996180-115e-11eb-8397-6a02c0702788.png">
+<img src="https://user-images.githubusercontent.com/31967654/100516312-f1c91800-31bd-11eb-8beb-c485c84c157a.png">
 </a>
 </p>
 
@@ -34,10 +34,6 @@
 * 一键运行脚本命令
 
 `wget https://github.com/lurenJBD/iSH-VNC/raw/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh `
-
-* 修复apk命令缺失和wget的tls支持（担心http代理不安全的请不要用！）
-
-`wget http://ish.rinko.icu/lurenJBD/iSH-VNC/main/fixapk_CN.sh -q -O fixapk.sh && sh fixapk.sh `
 
 * 针对App Store版wget不支持tls而使用http代理的命令（担心http代理不安全的请不要用！）
 
