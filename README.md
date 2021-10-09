@@ -9,6 +9,9 @@
 
 本次2.0更新，修改了脚本大量内容，提高代码可读性，方便阅读修改；精简重复代码，缩小脚本体积。
 
+* 2021-10-10
+- 更新2.1.1修复App Store 1.2版本之后导致Supervisor守护运行报错的问题
+
 # 脚本主要功能 
 
 - 一键无交互式安装配置VNC服务和桌面环境。
@@ -25,9 +28,9 @@
 > iSH后台运行需要位置权限，脚本帮助你判断<br/>
 > 基本做到开箱即用，无需过多操作。
 
-- 针对App Store版的iSH没有apk命令和wget不支持tls写了一键修复脚本
+- ~~针对App Store版的iSH没有apk命令和wget不支持tls写了一键修复脚本~~
 
-> 因为wget不支持tls导致没法用https链接，故自己弄了一台ECS用http代理了github的https链接，一定程度解决了这个问题;
+> ~~因为wget不支持tls导致没法用https链接，故自己弄了一台ECS用http代理了github的https链接，一定程度解决了这个问题;~~
 
 # 如何使用
 
@@ -35,9 +38,9 @@
 
 `wget https://github.com/lurenJBD/iSH-VNC/raw/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh `
 
-* 针对App Store版wget不支持tls而使用http代理的命令（担心http代理不安全的请不要用！）
+* ~~针对App Store版wget不支持tls而使用http代理的命令（担心http代理不安全的请不要用！）~~
 
-`wget http://ish.rinko.icu/lurenJBD/iSH-VNC/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh `
+`~~wget http://ish.rinko.icu/lurenJBD/iSH-VNC/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh~~ `
 
 # 注意事项
 
@@ -49,7 +52,7 @@
 
 - 目前使用的Supervisord守护还没法做到开机启动，所以服务必须要等守护启动才可以用配置的快捷命令运行（脚本会检查守护是否运行再去启动对应服务）
 
-- 因为http代理本身并不安全，想保证安全性的请自己手动到[Alpine官网](http://dl-cdn.alpinelinux.org/alpine)下载rootfs自行导入
+- ~~因为http代理本身并不安全，想保证安全性的请自己手动到[Alpine官网](http://dl-cdn.alpinelinux.org/alpine)下载rootfs自行导入~~
 
 > 1.点击键盘拓展栏上的设置图标,选择Filesystems菜单项<br/>
 > 2.进入菜单后点击右上角Import，选择rootfs导入<br/>
