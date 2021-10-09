@@ -75,10 +75,10 @@ update_sources(){
 }
 
 detect_version(){
-    cat /etc/alpine-release | awk -F "." '{print $1}'
-    if [ $@ = 3 ]; then
-        cat /etc/alpine-release | awk -F "." '{print $2}'
-        case $@ in
+    ver=`cat /etc/alpine-release | awk -F "." '{print $1}'`
+    if [ $ver = 3 ]; then
+        ver=`cat /etc/alpine-release | awk -F "." '{print $2}'`
+        case $ver in
            11)
             version=v3.11;;
            12)
