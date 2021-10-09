@@ -75,9 +75,9 @@ update_sources(){
 }
 
 detect_version(){
-    cat /alpine-release | awk -F "." '{print $1}'
+    cat /etc/alpine-release | awk -F "." '{print $1}'
     if [ $@ = 3 ]; then
-        cat /alpine-release | awk -F "." '{print $2}'
+        cat /etc/alpine-release | awk -F "." '{print $2}'
         case $@ in
            11)
             version=v3.11;;
@@ -91,7 +91,8 @@ detect_version(){
             version=v3.12;;
         esac
     else
-        echo "WARNING  未知的Alpine版本，换源后可能会出现问题"
+        echo "WARNING  未知的Alpine版本，换源后可能会出现问题，停止换源"
+        exit 0
     fi
 }
 
