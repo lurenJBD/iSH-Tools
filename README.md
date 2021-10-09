@@ -10,7 +10,7 @@
 本次2.0更新，修改了脚本大量内容，提高代码可读性，方便阅读修改；精简重复代码，缩小脚本体积。
 
 * 2021-10-10
-- 更新2.1.1修复App Store 1.2版本之后导致Supervisor守护运行报错的问题
+> 更新2.1.1修复App Store 1.2版本之后导致Supervisor守护运行报错的问题
 
 # 脚本主要功能 
 
@@ -40,7 +40,7 @@
 
 * ~~针对App Store版wget不支持tls而使用http代理的命令（担心http代理不安全的请不要用！）~~
 
-`~~wget http://ish.rinko.icu/lurenJBD/iSH-VNC/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh~~ `
+~~`~wget http://ish.rinko.icu/lurenJBD/iSH-VNC/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh`~~
 
 # 注意事项
 
