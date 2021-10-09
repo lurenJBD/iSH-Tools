@@ -67,10 +67,32 @@ backup_sources(){
 update_sources(){
     mirror="$1"
     tmp=$(mktemp)
-    echo "$mirror/alpine/v3.11/main" >> $tmp
-    echo "$mirror/alpine/v3.11/community" >> $tmp
+    detect_version
+    echo "$mirror/alpine/$version/main" >> $tmp
+    echo "$mirror/alpine/$version/community" >> $tmp
     mv "$tmp" /etc/apk/repositories
     echo "INFO 替换镜像源成功，输入apk update更新源"
+}
+
+detect_version(){
+    cat /alpine-release | awk -F "." '{print $1}'
+    if [ $@ = 3 ]; then
+        cat /alpine-release | awk -F "." '{print $2}'
+        case $@ in
+           11)
+            version=v3.11;;
+           12)
+            version=v3.12;;
+           13)
+            version=v3.13;;
+           14)
+            version=v3.14;;
+            *)
+            version=v3.12;;
+        esac
+    else
+        echo "WARNING  未知的Alpine版本，换源后可能会出现问题"
+    fi
 }
 
 create_mirror_list(){
