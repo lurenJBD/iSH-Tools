@@ -454,7 +454,7 @@ network_test
 fixapk
 while :; do
 echo "
-    iSH-VNC 服务管理脚本 2.1
+    iSH-VNC 服务管理脚本 2.1.1
  ===============================
 |  1：安装VNC服务和桌面环境     |
 |  2：卸载VNC服务和桌面环境     |
@@ -506,10 +506,10 @@ case $var in
         echo "NOTE 守护进程配置位于 '/etc/supervisord.d/*.conf' "
         create_supervisor_ini
 
-        sed -i "4cfile=/var/run/supervisor.sock   ; (the path to the socket file)" /etc/supervisord.conf
-        sed -i "20cpidfile=/var/run/supervisord.pid ; (supervisord pidfile;default supervisord.pid)" /etc/supervisord.conf
+        sed -i "4c;file=/var/run/supervisor.sock   ; (the path to the socket file)" /etc/supervisord.conf
+        sed -i "20c;pidfile=/var/run/supervisord.pid ; (supervisord pidfile;default supervisord.pid)" /etc/supervisord.conf
         sed -i "40cserverurl=unix:///var/run/supervisor.sock ; use a unix:// URL  for a unix socket" /etc/supervisord.conf
-        sed -i "131cfiles = /etc/supervisor.d/*.conf" /etc/supervisord.conf
+        sed -i 's/*.ini/*.conf/g' /etc/supervisord.conf
         echo "INFO VNC服务和桌面环境安装完成"
         echo "INFO 输入startx启动VNC服务和桌面环境"
         while :; do
