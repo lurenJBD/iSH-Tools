@@ -573,7 +573,7 @@ NOTE 密码需要重输一次以确保输入无误"
         passwd root
         sed -i "s/#Port.*/Port 22/g" /etc/ssh/sshd_config
         sed -i "s/#PermitRootLogin.*/PermitRootLogin yes/g" /etc/ssh/sshd_config
-        sed -i "4cfile=/var/run/supervisor.sock   ; (the path to the socket file)" /etc/supervisord.conf
+        sed -i "4c;file=/var/run/supervisor.sock   ; (the path to the socket file)" /etc/supervisord.conf
         sed -i "20cpidfile=/var/run/supervisord.pid ; (supervisord pidfile;default supervisord.pid)" /etc/supervisord.conf
         sed -i "40cserverurl=unix:///var/run/supervisor.sock ; use a unix:// URL  for a unix socket" /etc/supervisord.conf
         sed -i "131cfiles = /etc/supervisor.d/*.conf" /etc/supervisord.conf        
