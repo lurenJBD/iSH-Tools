@@ -28,19 +28,12 @@
 > iSH后台运行需要位置权限，脚本帮助你判断<br/>
 > 基本做到开箱即用，无需过多操作。
 
-- ~~针对App Store版的iSH没有apk命令和wget不支持tls写了一键修复脚本~~
-
-> ~~因为wget不支持tls导致没法用https链接，故自己弄了一台ECS用http代理了github的https链接，一定程度解决了这个问题;~~
 
 # 如何使用
 
 * 一键运行脚本命令
 
 `wget https://github.com/lurenJBD/iSH-VNC/raw/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh `
-
-* ~~针对App Store版wget不支持tls而使用http代理的命令（担心http代理不安全的请不要用！）~~
-
-~~`~wget http://ish.rinko.icu/lurenJBD/iSH-VNC/main/iSH-VNC_CN.sh -q -O iSH-VNC.sh && sh iSH-VNC.sh`~~
 
 # 注意事项
 
@@ -52,7 +45,8 @@
 
 - 目前使用的Supervisord守护还没法做到开机启动，所以服务必须要等守护启动才可以用配置的快捷命令运行（脚本会检查守护是否运行再去启动对应服务）
 
-- ~~因为http代理本身并不安全，想保证安全性的请自己手动到[Alpine官网](http://dl-cdn.alpinelinux.org/alpine)下载rootfs自行导入~~
+- 在iSH 1.2.0 版本后，作者删除了Alpine默认的tty0，导致本脚本失效
+- 临时解决办法：使用原版的Alpine，可以到[Alpine官网](http://dl-cdn.alpinelinux.org/alpine)下载rootfs自行导入
 
 > 1.点击键盘拓展栏上的设置图标,选择Filesystems菜单项<br/>
 > 2.进入菜单后点击右上角Import，选择rootfs导入<br/>
