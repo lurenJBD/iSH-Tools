@@ -1,7 +1,7 @@
 # iSH-VNC服务配置管理脚本
 <p align="center">
 <a href="https://ish.app">
-<img src="https://user-images.githubusercontent.com/31967654/221418551-7aae1011-bfa0-4a78-b13c-db00c8995051.png">
+<img src="https://user-images.githubusercontent.com/31967654/221418707-d8371f33-b65c-4cfa-aa2f-3722fcaace93.png">
 </a>
 </p>
 
@@ -13,11 +13,11 @@
 * 2021-10-10
 > 更新2.1.1修复App Store 1.2版本之后导致Supervisor守护运行报错的问题
 * 2023-02-26
-> 更新3.0.0
-> 适配 App Store 1.2.3版本 以及 TestFlight 1.3(458)版本
-> 解决无法正常安装运行VNC和SSH
-> 不再使用Supervisor作为进程管理，改用openrc，进而实现了ssh服务自启动
-> BUG: 由于 openrc/iSH 自身的原因，在第一次执行脚本安装好SSH或VNC服务后，并不能直接访问，需要重启iSH App才能正常运行对应服务
+> 更新3.0.0<br/>
+> 适配 App Store 1.2.3版本 以及 TestFlight 1.3(458)版本<br/>
+> 解决无法正常安装运行VNC和SSH<br/>
+> 不再使用Supervisor作为进程管理，改用openrc，进而实现了ssh服务自启动<br/>
+> BUG: 由于 openrc/iSH 自身的原因，在第一次执行脚本安装好SSH或VNC服务后，并不能直接访问，需要重启iSH App才能正常运行对应服务<br/>
 
 # 脚本主要功能 
 
@@ -51,11 +51,11 @@
 - 在77版（包括TF和App Store版）之前的 iSH 还无法运行xfce4桌面环境，运行i3wm会遇到i3status报错（听闻可以运行，目前尚未找到办法），只有awesome桌面环境可以正常运行。
 
 - ~~目前使用的Supervisord守护还没法做到开机启动，所以服务必须要等守护启动才可以用配置的快捷命令运行（脚本会检查守护是否运行再去启动对应服务）~~
-> ~~在商店版1.2.3后作者修复了openrc开机自启动的问题，后续跟进修改脚本~~
+> ~~在商店版1.2.3后作者修复了openrc开机自启动的问题，后续跟进修改脚本~~<br/>
 > 3.0.0版本已基本适配openrc，并让SSH服务自启动了
 
 - ~~在iSH 1.2.0 版本后，作者删除了Alpine默认的tty0，导致本脚本失效~~
-- ~~临时解决办法：使用原版的Alpine，可以到[Alpine官网](http://dl-cdn.alpinelinux.org/alpine)下载rootfs自行导入~~
+- ~~临时解决办法：使用原版的Alpine，可以到[Alpine官网](http://dl-cdn.alpinelinux.org/alpine)下载rootfs自行导入~~<br/>
 > 3.0.0版本已修复该问题，无需再进行rootfs替换
 
 > 1.点击键盘拓展栏上的设置图标,选择Filesystems菜单项<br/>
