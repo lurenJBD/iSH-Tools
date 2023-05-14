@@ -577,10 +577,9 @@ do_something_command() {
                 else
                     git config --global http.postBuffer 524288000
                     git config --global pack.threads 1
-                    cd /etc/iSH-Tools/
-                    git clone https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git
+                    git clone --depth 1 https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git /etc/iSH-Tools/
                     chmod +x /etc/iSH-Tools/ohmyzsh/tools/install.sh
-                    ./etc/iSH-Tools/ohmyzsh/tools/install.sh --unattended
+                    /etc/iSH-Tools/ohmyzsh/tools/install.sh --unattended
                 fi
                 sed -i 's/\/bin\/ash/\/bin\/zsh/g' /etc/passwd
                 $echo_INFO "已修改默认终端为zsh，重启iSH App以查看效果"
