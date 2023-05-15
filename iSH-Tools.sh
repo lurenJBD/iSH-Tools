@@ -597,8 +597,8 @@ do_something_command() {
                 if [ ! -e /etc/iSH-Tools/ohmyzsh/install.sh ]; then
                     git config --global http.postBuffer 524288000
                     git config --global pack.threads 1
-                    mkdir -p /opt/iSH-Tools/ohmyzsh/
-                    wget -qO /opt/iSH-Tools/ohmyzsh/install.sh https://raw.gitmirror.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+                    mkdir -p /etc/iSH-Tools/ohmyzsh/
+                    wget -qO /etc/iSH-Tools/ohmyzsh/install.sh https://raw.gitmirror.com/ohmyzsh/ohmyzsh/master/tools/install.sh
                     chmod +x /etc/iSH-Tools/ohmyzsh/install.sh
                 fi
                 /etc/iSH-Tools/ohmyzsh/install.sh --unattended
