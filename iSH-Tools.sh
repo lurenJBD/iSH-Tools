@@ -29,11 +29,6 @@ echo_WARNING="echo -e "${YELLOW}WARNING${PLAIN}""
 echo_ERROR="echo -e "${RED}ERROR${PLAIN}""
 ########### Function ###########
 init_run() {
-    # 检查shell是否为bash
-    if [ -z "$BASH_VERSION" ]; then
-        #apk add bash
-        exec bash "$0" "$@"
-    fi
     # 获取运行环境信息
     if grep -q "SUPER AWESOME" /proc/version; then
         ish_ver=$(cat /proc/ish/version | awk '{print $2 " " $3}')
@@ -49,7 +44,7 @@ init_run() {
     if [ ! -e /etc/iSH-Tools/tools_inited ];then
         mkdir -p /etc/iSH-Tools
         if [ -e /opt/iSH-VNC ];then
-            if [ -f /opt/iSH-VNC/VNC_installed ]; then
+            if [ -e /opt/iSH-VNC/VNC_installed ]; then
             sed -i 's/^installed_DE=\(.*\)/installed_DE="\1"/' /opt/iSH-VNC/VNC_installed
             source /opt/iSH-VNC/VNC_installed && echo installed_apk_repo=\"$installed_DE\" > /etc/iSH-Tools/VNC_installed
             source /opt/iSH-VNC/VNC_installed_name && echo installed_apk_name=$installed_DE_name >> /etc/iSH-Tools/VNC_installed
@@ -99,61 +94,12 @@ check_connection() {
             if ! ping_host; then
                 mv /etc/resolv.conf.bak /etc/resolv.conf
                 $echo_WARNING 网络连接异常，只能执行部分脚本功能
-            else
-                No_Network=0
             fi
             init_run_WARNING=1 
         fi
-        No_Network=1 
-    else
-        No_Network=0
+        No_Network=1
     fi
 } # 检查网络状况
-mirrors_speedtest() {
-    mirrors_speedtest_spin() {
-        local LC_CTYPE=C spin='-\|/' i=0
-        mirrors_speedtest_wget "$@" &
-        tput civis
-        while kill -0 $! 2>/dev/null; do
-            i=$(((i + 1) % ${#spin}))
-            printf "\r%s" "${spin:$i:1}"
-            echo -en "\033[1D"
-            sleep .1
-        done
-        tput cnorm
-        wait $!
-    } # 旋转动画
-    mirrors_speedtest_wget() {
-        local output=$(LANG=C wget -4O /dev/null -T30 "$1" 2>&1)
-        local speed=$(printf '%s' "$output" | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}')
-        local ipaddress=$(printf '%s' "$output" | awk -F'|' '/Connecting to .*\|([^\|]+)\|/ {print $2}' | tail -1)
-        local time=$(printf '%s' "$output" | awk -F= '/100% / {print $2}')
-        local size=$(printf '%s' "$output" | awk '/Length:/ {s=$3} END {gsub(/\(|\)/,"",s); print s}')
-        [ -z "$speed" ] && speed=0KB/s
-        [ -z "$ipaddress" ] && ipaddress=null time=null size=null
-        printf "${YELLOW}%-12s${GREEN}%-19s${CYAN}%-12s${PLAIN}%-11s${RED}%-10s${PLAIN}\n" "$2" "${ipaddress}" "${size}" "${time}" "${speed}"
-        speed=$(echo "$speed" | awk '{if ($0 ~ /MB\/s/) printf "%.0fKB/s", $1*1024; else print}')
-        echo "$2 ${mirrors[$key]#*:} $speed" >>$speed_test_log
-    } # 测速功能
-    clear
-    $echo_INFO "正在进行镜像源优选，会需要一些时间"
-    echo -e "\n[镜像站点]"
-    for key in $(seq 1 11); do
-        printf "${PLAIN}%-2s: ${GREEN}%-3s${PLAIN}\n" "${mirrors[$key]%:h*}" "${mirrors[$key]#*:}"
-    done
-    echo -e "\n[测试信息]"
-    echo -e "系统信息: ${YELLOW}Alpine ${alpine_version}${PLAIN}"
-    echo -e "下载文件: ${YELLOW}${file_name}${PLAIN}"
-    echo
-    rm -f $speed_test_log
-    printf "%-13s%-21s%-16s%-15s%-10s\n" "镜像站点" "IPv4地址" "文件大小" "下载用时" "下载速度"
-    for key in $(seq 1 11); do
-        mirrors_speedtest_spin "${mirrors[$key]#*:}${file_path}" "${mirrors[$key]%:h*}"
-    done
-    sort -k 3 -n -r -o $speed_test_log $speed_test_log
-    mirror_url=$(head -n 1 $speed_test_log | cut -d ' ' -f2)
-    mirror_name=$(head -n 1 $speed_test_log | cut -d ' ' -f1)
-} # 镜像源测速
 mirrors_manager() {
     local repos_c="${YELLOW}repositories.bk${PLAIN}"
     # 镜像源列表
@@ -170,6 +116,47 @@ mirrors_manager() {
         [10]="腾讯源:http://mirrors.cloud.tencent.com"
         [11]="阿里源:http://mirrors.aliyun.com"
     )
+    mirrors_speedtest() {
+        mirrors_speedtest_spin() {
+            local LC_CTYPE=C spin='-\|/' i=0
+            mirrors_speedtest_wget "$@" &
+            tput civis
+            while kill -0 $! 2>/dev/null; do
+                i=$(((i + 1) % ${#spin}))
+                printf "\r%s" "${spin:$i:1}"
+                echo -en "\033[1D"
+                sleep .1
+            done
+            tput cnorm
+            wait $!
+        } # 旋转动画
+        mirrors_speedtest_wget() {
+            local output=$(LANG=C wget -4O /dev/null -T30 "$1" 2>&1)
+            local speed=$(printf '%s' "$output" | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}')
+            local ipaddress=$(printf '%s' "$output" | awk -F'|' '/Connecting to .*\|([^\|]+)\|/ {print $2}' | tail -1)
+            local time=$(printf '%s' "$output" | awk -F= '/100% / {print $2}')
+            local size=$(printf '%s' "$output" | awk '/Length:/ {s=$3} END {gsub(/\(|\)/,"",s); print s}')
+            [ -z "$speed" ] && speed=0KB/s
+            [ -z "$ipaddress" ] && ipaddress=null time=null size=null
+            printf "${YELLOW}%-12s${GREEN}%-19s${CYAN}%-12s${PLAIN}%-11s${RED}%-10s${PLAIN}\n" "$2" "${ipaddress}" "${size}" "${time}" "${speed}"
+            speed=$(echo "$speed" | awk '{if ($0 ~ /MB\/s/) printf "%.0fKB/s", $1*1024; else print}')
+            echo "$2 ${mirrors[$key]#*:} $speed" >>$speed_test_log
+        } # 测速功能
+        clear
+        $echo_INFO "正在进行镜像源优选，会需要一些时间"
+        echo -e "\n[测试信息]"
+        echo -e "系统信息: ${YELLOW}Alpine ${alpine_version}${PLAIN}"
+        echo -e "下载文件: ${YELLOW}${file_name}${PLAIN}"
+        echo
+        rm -f $speed_test_log
+        printf "%-13s%-21s%-16s%-15s%-10s\n" "镜像站点" "IPv4地址" "文件大小" "下载用时" "下载速度"
+        for key in $(seq 1 11); do
+            mirrors_speedtest_spin "${mirrors[$key]#*:}${file_path}" "${mirrors[$key]%:h*}"
+        done
+        sort -k 3 -n -r -o $speed_test_log $speed_test_log
+        mirror_url=$(head -n 1 $speed_test_log | cut -d ' ' -f2)
+        mirror_name=$(head -n 1 $speed_test_log | cut -d ' ' -f1)
+    } # 镜像源测速
     backup_sources() {
         if [ ! -e /etc/apk/repositories.bk ]; then
             $echo_INFO "创建 ${repos_c} 备份"
@@ -200,7 +187,7 @@ mirrors_manager() {
         case $user_choice in
         [yY])
             backup_sources
-            rm -f /etc/apk/repositories
+            rm -rf /etc/apk/repositories /ish
             echo "$1/alpine/$alpine_version/main" >>/etc/apk/repositories
             echo "$1/alpine/$alpine_version/community" >>/etc/apk/repositories
             $echo_INFO "正在更新源缓存"
@@ -213,21 +200,20 @@ mirrors_manager() {
     select_sources() {
         while :; do
             sleep 0.1
-            echo -e "[${GREEN}镜像站列表${PLAIN}]"
+            echo -e "\n[镜像站点]"
             for key in $(seq 1 11); do
-                printf "%0s%-3s\n" ${key} ".${mirrors[$key]%:h*}"
+                printf "%0s.${PLAIN}%-2s: ${GREEN}%-3s${PLAIN}\n" ${key} "${mirrors[$key]%:h*}" "${mirrors[$key]#*:}"
             done
-            read -p "请输入编号[0-11]:(输入 0 进行优选) " mirror
-            if [[ ! $mirror =~ ^[0-9]+$ ]]; then
+            read  -p "请输入编号[0-11]:(输入 0 进行优选, q 返回上层)" mirror
+            if [ "$mirror" = "q" ]; then
+                return  
+            elif [[ ! $mirror =~ ^[0-9]+$ ]]; then
                 clear && $echo_ERROR "请输入正确的数字!"
             elif [ "$mirror" = 0 ]; then
-                check_connection
-                if [[ $No_Network -eq 1 ]]; then
-                    $echo_ERROR 无网络连接，无法进行优选
-                else
-                    mirrors_speedtest
-                    break
-                fi
+                check_connection 
+                [[ $No_Network -eq 1 ]] && $echo_ERROR 无网络连接，无法进行优选 && return
+                mirrors_speedtest
+                break
             elif [[ ! -v mirrors[$mirror] ]]; then
                 clear && $echo_ERROR "输入的数字不在选项中，请重新输入！"
             else
@@ -356,20 +342,64 @@ create_service() {
 		EOF
         chmod +x /etc/init.d/xinit
     fi
-} # 创建服务启动文件
-get_localtion() {
-    cat /dev/location >/tmp/location.log &
-    $echo_INFO "申请位置权限仅用于保持iSH后台运行"        
-    $echo_INFO "请在iOS授权界面上点击 '使用App时允许'"
-    sleep 5
-    if [ -s /tmp/location.log ]; then
-        $echo_INFO "已赋予位置权限"
-    else
-        $echo_INFO "无法获取位置权限，iSH无法保持后台运行"
+    if [ ! -e /etc/init.d/get_location ]; then
+        cat >/etc/init.d/get_location <<-'EOF'
+		#!/sbin/openrc-run
+		name="get_location"
+		description="get location to keep iSH running in the background"
+
+		start() {
+		        ebegin "Starting get_location"
+		        start-stop-daemon -Sb -m -p /run/get_location.pid --exec cat -- /dev/location >/dev/null
+		        eend $?
+		}
+
+		stop() {
+		        ebegin "Stopping get_location"
+		        start-stop-daemon -Kqp /run/get_location.pid
+		        eend $?
+		}
+		EOF
+        chmod +x /etc/init.d/get_location  
     fi
-    killall cat /dev/location &>/tmp/location.log
-    rm /tmp/location.log
-    cat /dev/location >/dev/null &
+} # 创建服务启动文件
+background_running() {
+    if pgrep -f "cat /dev/location" >/dev/null; then
+        $echo_INFO "iSH已经可以保持后台运行了"
+        read -p "* 是否要取消保持后台运行？[Y/N]" user_choice
+        case $user_choice in
+            [yY])
+                killall -TERM cat
+                rc-service get_location stop 2>/dev/null
+                rc-update del get_location 2>/dev/null ;;
+            *) $echo_INFO "iSH会继续保持后台运行" ;;
+        esac
+    else
+        local i=0
+        cat /dev/location >/tmp/location.log &
+        $echo_INFO "申请位置权限仅用于保持iSH后台运行"        
+        $echo_INFO "请在iOS授权界面上点击 '使用App时允许'"
+        while ((i < 15)); do
+            if [ -s /tmp/location.log ]; then
+                $echo_INFO "已赋予位置权限"
+                killall -TERM cat && rm /tmp/location.log
+                create_service
+                rc-update add get_location 2>/dev/null
+                rc-service get_location start 2>/dev/null
+                if [ $? != 0 ]; then
+                    cat /dev/location >/dev/null &
+                fi
+                break
+            else
+                sleep 1
+                ((i++))
+            fi
+        done
+        if [ $i -gt 16 ]; then
+            $echo_ERROR "超时15秒，无法获取位置权限，iSH无法保持后台运行"
+            killall -TERM cat && rm /tmp/location.log
+        fi
+    fi
 } # 获取位置权限，用于保持后台运行
 install_script() {
     clear
@@ -380,7 +410,7 @@ install_script() {
 } # 安装脚本
 get_services_status() {
     for service in SSH VNC; do
-        if [ -f /etc/iSH-Tools/${service}_installed ]; then
+        if [ -e /etc/iSH-Tools/${service}_installed ]; then
             eval ${service}_install="已安装"
             eval ${service}_color="\$GREEN"
         else
@@ -399,42 +429,34 @@ get_services_status() {
         fi
     done
 } # 获取服务的安装和运行状态
-run_cpuid() {
-    if [ ! -f /etc/iSH-Tools/other_tools/cpuid2cpuflags ]; then
-        $echo_WARNING "缺少cpuid2cpuflags文件，从Github下载"
-        mkdir /etc/iSH-Tools/other_tools 2>/dev/null
+run_tools() {
+    local tools_dir="/etc/iSH-Tools/other_tools" tool=$1
+    mkdir -p "$tools_dir"
+    if [ ! -e "$tools_dir/$tool" ]; then
+        $echo_WARNING "缺少"$tool"文件，从Github下载"
         check_connection
-        [[ $No_Network -eq 1 ]] && $echo_ERROR "无网络连接，无法下载cpuid2cpuflags" && return
+        [[ $No_Network -eq 1 ]] && $echo_ERROR "无网络连接，无法下载"$tool"" && return
         urls=("https://github.com" "https://download.fastgit.org" "https://kgithub.com" "https://ghproxy.com/https://github.com")
         for url in "${urls[@]}"; do
-            wget -T15 -qO /etc/iSH-Tools/other_tools/cpuid2cpuflags ${url}/lurenJBD/iSH-Tools/releases/download/Tools/cpuid2cpuflags && break
+            wget -T15 -qO ${tools_dir}/${tool} ${url}/lurenJBD/iSH-Tools/releases/download/Tools/${tool} && break
         done
-        chmod +x /etc/iSH-Tools/other_tools/cpuid2cpuflags
-        ln -s /etc/iSH-Tools/other_tools/cpuid2cpuflags /usr/local/bin/cpuid2cpuflags
+        chmod +x ${tools_dir}/${tool}
+        ln -s ${tools_dir}/${tool} /usr/local/bin/${tool}
     fi
-    cpuid2cpuflags | sed -n 's/^CPU_FLAGS_X86: //p' | awk '{printf "支持的指令集："; for(i=1;i<=NF;i++) printf "%s ", $i; printf "\n"}'
+    case $tool in
+    cpuid2cpuflags)
+        cpuid2cpuflags | sed -n 's/^CPU_FLAGS_X86: //p' | awk '{printf "支持的指令集："; for(i=1;i<=NF;i++) printf "%s ", $i; printf "\n"}'
+        ;;
+    coremark)
+        $echo_INFO "正在进行 coremark 性能测试，请稍等..."
+        coremark | grep "CoreMark 1.0" | awk '{print strftime("%Y-%m-%d %H:%M:%S"), $4}' >> "$tools_dir/coreark_results.log"
+        echo "本次成绩为: $(tail -n 1 "$tools_dir/coreark_results.log" | awk '{print $NF}')"
+        echo -e "参考成绩\nJ1900(x86)   4核  34060\nMT7621(MIPS) 2核  4547\nN1(ARM)      4核  18404"
+        $echo_INFO "历史成绩保存在$tools_dir/coreark_results.log"
+        ;;
+    esac
     sleep 0.5 && echo
-} # 查询CPU指令集
-run_coremark() {
-    if [ ! -f /etc/iSH-Tools/other_tools/coremark ]; then
-        $echo_WARNING "缺少coremark文件，从Github下载"
-        mkdir /etc/iSH-Tools/other_tools 2>/dev/null
-        check_connection
-        [[ $No_Network -eq 1 ]] && $echo_ERROR "无网络连接，无法下载coremark" && return
-        urls=("https://github.com" "https://download.fastgit.org" "https://kgithub.com" "https://ghproxy.com/https://github.com")
-        for url in "${urls[@]}"; do
-            wget -T15 -qO /etc/iSH-Tools/other_tools/coremark ${url}/lurenJBD/iSH-Tools/releases/download/Tools/coremark && break
-        done
-        chmod +x /etc/iSH-Tools/other_tools/coremark
-        ln -s /etc/iSH-Tools/other_tools/coremark /usr/local/bin/coremark
-    fi
-    $echo_INFO "正在进行 coremark 性能测试，请稍等..."
-    coremark | grep "CoreMark 1.0" | awk '{print strftime("%Y-%m-%d %H:%M:%S"), $4}' >> /etc/iSH-Tools/other_tools/coreark_results.log
-    echo "本次成绩为: $(tail -n 1 /etc/iSH-Tools/other_tools/coreark_results.log | awk '{print $NF}')"
-    echo -e "参考成绩：\nJ1900(x86)   4核  34060\nMT7621(MIPS) 2核  4547\nN1(ARM)      4核  18404"
-    $echo_INFO "历史成绩保存在/etc/iSH-Tools/other_tools/coreark_results.log"
-    sleep 0.5 && echo
-} # 运行coremark性能测试
+} # 运行各种工具
 change_root_password() {
     $echo_INFO "正在修改root账户密码，Ctrl + C 取消修改"
     $echo_INFO "输入的密码是看不见的，需要输入两次"
@@ -504,11 +526,11 @@ config_services() {
     fi
 } # 配置服务（安装、删除或更改）
 do_something_command() {
-    [ -f /etc/iSH-Tools/${services}_installed ] && source /etc/iSH-Tools/${services}_installed
+    [ -e /etc/iSH-Tools/${services}_installed ] && source /etc/iSH-Tools/${services}_installed
     do_chance() {
         if [ "$apk_name" = "$installed_apk_name" ]; then
             $echo_WARNING "${apk_name}桌面环境已经安装，无需更换"
-        elif [ ! -f /etc/iSH-Tools/${services}_installed ] ; then
+        elif [ ! -e /etc/iSH-Tools/${services}_installed ] ; then
             $echo_WARNING "未安装过${services}服务，请先安装"
         else
             do_del
@@ -516,13 +538,13 @@ do_something_command() {
         fi
     }
     do_chance_vnc_resolution() {
-        [ ! -f /etc/X11/xorg.conf.d/10-headless.conf ] && $echo_ERROR "没找到VNC服务配置文件，无法修改" && config_vnc_menu
+        [ ! -e /etc/X11/xorg.conf.d/10-headless.conf ] && $echo_ERROR "没找到VNC服务配置文件，无法修改" && config_vnc_menu
         config_vnc_resolution
         sed -i "s#^           Modes.*#           Modes "$VL"#g" /etc/X11/xorg.conf.d/10-headless.conf
         $echo_INFO "VNC分辨率已修改为$VL" && config_vnc_menu
     }
     do_del() {
-        if [ ! -f "/etc/iSH-Tools/${services}_installed" ] || [ "$apk_name" != "$installed_apk_name" ]; then
+        if [ ! -e "/etc/iSH-Tools/${services}_installed" ] || [ "$apk_name" != "$installed_apk_name" ]; then
             $echo_WARNING "未安装过${services}服务" 
         else
             apk del -q ${installed_apk_repo}
@@ -540,13 +562,13 @@ do_something_command() {
         fi
     }
     do_install() {
-        if [ -f "/etc/iSH-Tools/${services}_installed" ] || [ "$apk_name" = "$installed_apk_name" ]; then
+        if [ -e "/etc/iSH-Tools/${services}_installed" ] || [ "$apk_name" = "$installed_apk_name" ]; then
             $echo_INFO "${services}服务已安装，无需重复安装"
         else
             check_connection
             [[ $No_Network -eq 1 ]] && $echo_ERROR "无网络连接，无法安装${services}服务" && return
             if [ "$do_type" = vnc ]; then
-                [ ! -f /etc/X11/xorg.conf.d/10-headless.conf ] && config_vnc_resolution && clear
+                [ ! -e /etc/X11/xorg.conf.d/10-headless.conf ] && config_vnc_resolution && clear
                 xinit_vnc
                 create_service
                 vnc_de='xvfb x11vnc x11vnc-doc xorg-server xdpyinfo xdpyinfo-doc xf86-video-dummy xterm' rm_file='/root/.xinitrc'
@@ -563,7 +585,7 @@ do_something_command() {
                 have_been_timeout=$?
             fi
             if [ "$do_type" = ssh ]; then
-                [ ! -f /etc/ssh/ssh_host_ed25519_key ] && $echo_INFO "正在生成SSH安全密匙" && ssh-keygen -A
+                [ ! -e /etc/ssh/ssh_host_ed25519_key ] && $echo_INFO "正在生成SSH安全密匙" && ssh-keygen -A
                 rm_file='/etc/ssh/sshd_config'
                 echo 'root:alpine' | chpasswd
                 sed -i "s/^Port.*/Port 8022/g" /etc/ssh/sshd_config
@@ -572,7 +594,7 @@ do_something_command() {
             fi
             if [ "$do_type" = zsh ]; then
                 REMOTE=https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git BRANCH=master rm_file='/etc/iSH-Tools/ohmyzsh/tools/install.sh'
-                if [ -f /etc/iSH-Tools/ohmyzsh/tools/install.sh ]; then
+                if [ -e /etc/iSH-Tools/ohmyzsh/tools/install.sh ]; then
                     ./etc/iSH-Tools/ohmyzsh_install.sh --unattended
                 else
                     git config --global http.postBuffer 524288000
@@ -690,9 +712,9 @@ config_services_boot() {
 other_tools_menu() {
     local do_type=zsh services=ZSH apk_name=ohmyzsh
     declare -A options=(
-    [1]="CoreMark跑分:run_coremark"
-    [2]="查询CPU指令集:run_cpuid"
-    [3]="让iSH保持后台运行:get_localtion"
+    [1]="CoreMark跑分:run_tools coremark"
+    [2]="查询CPU指令集:run_tools cpuid2cpuflags"
+    [3]="让iSH保持后台运行:background_running"
     [4]="安装ohmyzsh:config_services 1"
     [5]="删除ohmyzsh:config_services 2"
     )
@@ -703,9 +725,9 @@ other_tools_menu() {
     [1-5])
         clear && ${options[$chosen_option]#*:};;
     *)
-        error_tips 3
-        other_tools_menu;;
+        error_tips 3;;
     esac
+    other_tools_menu
 } # 其他工具菜单
 manage_mirror_menu() {
     declare -A options=(
