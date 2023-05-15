@@ -436,7 +436,7 @@ run_tools() {
         $echo_WARNING "缺少"$tool"文件，从Github下载"
         check_connection
         [[ $No_Network -eq 1 ]] && $echo_ERROR "无网络连接，无法下载"$tool"" && return
-        urls=("https://github.com" "https://download.fastgit.org" "https://kgithub.com" "https://ghproxy.com/https://github.com")
+        urls=("https://github.com" "https://download.fastgit.org" "https://kgithub.com" "https://ghproxy.com/https://github.com" "https://hub.gitmirror.com/https://github.com")
         for url in "${urls[@]}"; do
             wget -T15 -qO ${tools_dir}/${tool} ${url}/lurenJBD/iSH-Tools/releases/download/Tools/${tool} && break
         done
@@ -537,7 +537,7 @@ do_something_command() {
             do_install
         fi
     }
-    do_chance_vnc_resolution() {
+    chance_vnc_resolution() {
         [ ! -e /etc/X11/xorg.conf.d/10-headless.conf ] && $echo_ERROR "没找到VNC服务配置文件，无法修改" && config_vnc_menu
         config_vnc_resolution
         sed -i "s#^           Modes.*#           Modes "$VL"#g" /etc/X11/xorg.conf.d/10-headless.conf
@@ -594,15 +594,14 @@ do_something_command() {
             fi
             if [ "$do_type" = zsh ]; then
                 REMOTE=https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git BRANCH=master rm_file='/etc/iSH-Tools/ohmyzsh/tools/install.sh'
-                if [ -e /etc/iSH-Tools/ohmyzsh/tools/install.sh ]; then
-                    ./etc/iSH-Tools/ohmyzsh_install.sh --unattended
-                else
+                if [ ! -e /etc/iSH-Tools/ohmyzsh/install.sh ]; then
                     git config --global http.postBuffer 524288000
                     git config --global pack.threads 1
-                    git clone --depth 1 https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git /etc/iSH-Tools/
-                    chmod +x /etc/iSH-Tools/ohmyzsh/tools/install.sh
-                    /etc/iSH-Tools/ohmyzsh/tools/install.sh --unattended
+                    mkdir -p /opt/iSH-Tools/ohmyzsh/
+                    wget -qO /opt/iSH-Tools/ohmyzsh/install.sh https://raw.gitmirror.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+                    chmod +x /etc/iSH-Tools/ohmyzsh/install.sh
                 fi
+                /etc/iSH-Tools/ohmyzsh/install.sh --unattended
                 sed -i 's/\/bin\/ash/\/bin\/zsh/g' /etc/passwd
                 $echo_INFO "已修改默认终端为zsh，重启iSH App以查看效果"
             fi
@@ -620,7 +619,7 @@ do_something_command() {
         1) do_install ;;
         2) do_del ;;
         3) do_chance ;;
-        4) do_chance_vnc_resolution ;;
+        4) chance_vnc_resolution ;;
     esac
 } # 执行动作（安装、删除或更改）
 config_vnc_resolution() {
