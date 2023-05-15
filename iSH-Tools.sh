@@ -724,8 +724,7 @@ other_tools_menu() {
         clear && main_menu;;
     [1-5])
         clear && ${options[$chosen_option]#*:};;
-    *)
-        error_tips 3;;
+    *) error_tips 3;;
     esac
     other_tools_menu
 } # 其他工具菜单
@@ -741,10 +740,9 @@ manage_mirror_menu() {
         clear && main_menu;;
     [1-3])
         clear && ${options[$chosen_option]#*:};;
-    *)
-        error_tips 3
-        manage_mirror_menu;;
+    *) error_tips 3 ;;
     esac
+    manage_mirror_menu
 } # 管理镜像源菜单
 config_ssh_menu() {
     local do_type=ssh services=SSH services_port=8022 services_name=sshd apk_name=openssh
@@ -759,8 +757,9 @@ config_ssh_menu() {
         q) clear && main_menu;;
     [1-4])
             clear && ${options[$chosen_option]#*:};;
-        *) error_tips 3 && config_ssh_menu;;
-    esac   
+        *) error_tips 3 ;;
+    esac
+    config_ssh_menu
 } # SSH配置菜单
 config_vnc_menu() {
     local do_type=vnc services=VNC services_port=5900 services_name=x11vnc
@@ -778,10 +777,9 @@ config_vnc_menu() {
             clear
             ${options[$chosen_option]#*:}
             ;;
-        *)
-            error_tips 3
-            config_vnc_menu ;;
+        *) error_tips 3 ;;
     esac
+    config_vnc_menu 
 } # VNC配置菜单
 main_menu() {
     declare -A options=(
