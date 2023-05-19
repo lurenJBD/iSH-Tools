@@ -594,9 +594,8 @@ do_something_command() {
                     git config --global pack.threads 1
                     mkdir -p /etc/iSH-Tools/ohmyzsh/
                     wget -qO /etc/iSH-Tools/ohmyzsh/install.sh https://raw.gitmirror.com/ohmyzsh/ohmyzsh/master/tools/install.sh
-                    chmod +x /etc/iSH-Tools/ohmyzsh/install.sh
                 fi
-                /etc/iSH-Tools/ohmyzsh/install.sh --unattended
+                sh /etc/iSH-Tools/ohmyzsh/install.sh --unattended
                 sed -i 's/\/bin\/ash/\/bin\/zsh/g' /etc/passwd
                 $echo_INFO "已修改默认终端为zsh，重启iSH App以查看效果"
             fi
