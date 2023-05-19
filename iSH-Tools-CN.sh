@@ -582,7 +582,7 @@ do_something_command() {
                 [ ! -e /etc/ssh/ssh_host_ed25519_key ] && $echo_INFO "正在生成SSH安全密匙" && ssh-keygen -A
                 rm_file='/etc/ssh/sshd_config'
                 echo 'root:alpine' | chpasswd
-                sed -i "s/^Port.*/Port 8022/g" /etc/ssh/sshd_config
+                sed -i "s/^#Port.*/Port 8022/g" /etc/ssh/sshd_config
                 sed -i "s/#PermitRootLogin.*/PermitRootLogin yes/g" /etc/ssh/sshd_config
                 $echo_INFO "SSH登入信息:\n用户名: root\n密码: alpine"
             fi
