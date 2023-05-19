@@ -12,7 +12,7 @@ tools_version="3.2"
 inite_repo="wget ncurses openrc bash"
 HOST="baidu.com"
 NAMESERVER="223.5.5.5"
-github_urls=("https://github.com" "https://download.fastgit.org" "https://kgithub.com" "https://ghproxy.com/https://github.com" "https://hub.gitmirror.com/https://github.com")
+github_url="https://github.com"
 speed_test_log="/tmp/speed_test.log"
 file_path="/alpine/v3.14/releases/x86/alpine-minirootfs-3.14.0-x86.tar.gz"
 file_name="alpine-minirootfs-3.14.0-x86.tar.gz"
@@ -92,8 +92,7 @@ check_location() {
     location=$(wget -qO- https://cf-ns.com/cdn-cgi/trace | awk -F'=' '/^loc=/{print $2}')
     if [[ "$location" == "CN" ]]; then
         $echo_INFO "根据当前网络环境，自动更换 APK 镜像源并使用 GitHub 镜像站"
-        target="https://github.com"
-        github_urls=("${github_urls[@]/$target}")
+        github_url="https://ghproxy.com/https://github.com"
         REMOTE=https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git
         rm -rf /etc/apk/repositories /ish
         echo "http://mirrors.aliyun.com/alpine/$alpine_version/main" >>/etc/apk/repositories
@@ -404,9 +403,8 @@ background_running() {
 install_script() {
     clear
     $echo_INFO "安装最新版iSH-Tools"
-    for url in "${github_urls[@]}"; do
-        sh -c "$(wget -T15 -qO- ${url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)" && break
-    done
+    sh -c "$(wget -T15 -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"
+
 } # 安装脚本
 get_services_status() {
     for service in SSH VNC; do
@@ -436,9 +434,7 @@ run_tools() {
         $echo_WARNING "缺少"$tool"文件，从Github下载"
         check_connection
         [[ $No_Network -eq 1 ]] && $echo_ERROR "无网络连接，无法下载"$tool"" && return
-        for url in "${github_urls[@]}"; do
-            wget -T15 -qO ${tools_dir}/${tool} ${url}/lurenJBD/iSH-Tools/releases/download/Tools/${tool} && break
-        done
+        wget -T15 -qO ${tools_dir}/${tool} ${github_url}/lurenJBD/iSH-Tools/releases/download/Tools/${tool}
         chmod +x ${tools_dir}/${tool}
         ln -s ${tools_dir}/${tool} /usr/local/bin/${tool}
     fi
@@ -592,9 +588,7 @@ do_something_command() {
                     git config --global http.postBuffer 524288000
                     git config --global pack.threads 1
                     mkdir -p /etc/iSH-Tools/ohmyzsh/
-                    for url in "${github_urls[@]}"; do
-                        wget -T15 -qO /etc/iSH-Tools/ohmyzsh/install.sh ${url}/ohmyzsh/ohmyzsh/master/tools/install.sh && break
-                    done
+                    wget -T15 -qO /etc/iSH-Tools/ohmyzsh/install.sh ${github_url}/ohmyzsh/ohmyzsh/raw/master/tools/install.sh
                     chmod +x /etc/iSH-Tools/ohmyzsh/install.sh
                 fi
                 /etc/iSH-Tools/ohmyzsh/install.sh --unattended
