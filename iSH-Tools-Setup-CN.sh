@@ -60,6 +60,11 @@ run_main() {
         source /opt/iSH-VNC/VNC_installed_name && echo installed_apk_name=$installed_DE_name >> /etc/iSH-Tools/VNC_installed
         rm -rf /opt/iSH-VNC
     fi
+    if [ "$No_Network" = 1 ]; then
+        $echo_ERROR 获取新版本信息失败 && lastest_version=$inited_version
+    else
+        lastest_version=$(wget -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/lastest_version | awk -F'=' '/^lastest_version=/{print $2}')
+    fi
     if [ ! -e /etc/iSH-Tools/tools_inited ];then
         mkdir -p /etc/iSH-Tools
         $echo_INFO 正在安装需要的软件包...
@@ -79,16 +84,11 @@ run_main() {
         fi
         if [ "$have_been_timeout" = 0 ]; then
             sed -i "s#::sysinit:/sbin/openrc sysinit#::sysinit:/sbin/openrc#g" /etc/inittab
-            echo inited_version=$tools_version >>/etc/iSH-Tools/tools_inited
+            echo inited_version=$lastest_version >>/etc/iSH-Tools/tools_inited
             echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
         fi
     else
         source /etc/iSH-Tools/tools_inited
-        if [ "$No_Network" = 1 ]; then
-            $echo_ERROR 获取新版本信息失败 && lastest_version=$inited_version
-        else
-            lastest_version=$(wget -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/lastest_version | awk -F'=' '/^lastest_version=/{print $2}')
-        fi
         if [ "$lastest_version" != "$inited_version" ]; then
             $echo_WARNING 检查到新版本，自动更新中...
             rm -f /etc/iSH-Tools/tools_inited /usr/local/bin/iSH-Tools
