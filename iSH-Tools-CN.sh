@@ -41,12 +41,12 @@ init_run() {
     fi
     alpine_version=$(awk -F. '{if ($1 == 3) print "v3."$2}' /etc/alpine-release)
     local init_check=1 && check_connection
+    [[ $No_Network -eq 1 ]] && check_location
     # 第一次初始化脚本
     if [ ! -e /etc/iSH-Tools/tools_inited ];then
         mkdir -p /etc/iSH-Tools
         $echo_INFO 检测到第一次运行脚本，正在初始化
         [[ $No_Network -eq 1 ]] && $echo_ERROR 无网络连接，初始化失败，脚本自动退出 && exit 1
-        check_location
         timeout 30s apk add -q ${inite_repo}
         have_been_timeout=$?
         if [ "$have_been_timeout" = 143 ]; then
@@ -84,7 +84,7 @@ check_connection() {
             else
                 unset $No_Network
             fi
-            init_run_WARNING=1 
+            init_run_WARNING=1
         fi
     fi
 } # 检查网络状况
