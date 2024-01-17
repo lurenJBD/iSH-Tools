@@ -4,20 +4,17 @@
 # coremark https://github.com/eembc/coremark
 # cpuid2cpuflags https://github.com/projg2/cpuid2cpuflags
 # coremark参考成绩来自：https://www.bilibili.com/read/cv21181867
-# Moded by lurenJBD 2023.05.14
+# Moded by lurenJBD 2024.01.17
 # iSH-Tools by lurenJBD 2020-10-17
 
 ########### Variable ###########
-tools_version="3.2"
+tools_version="3.3"
 inite_repo="wget ncurses openrc bash"
 HOST="baidu.com"
 NAMESERVER="223.5.5.5"
 github_url="https://github.com"
-speed_test_log="/tmp/speed_test.log"
-file_path="/alpine/v3.14/releases/x86/alpine-minirootfs-3.14.0-x86.tar.gz"
-file_name="alpine-minirootfs-3.14.0-x86.tar.gz"
 error_times=0
-# 终端颜色
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -28,18 +25,24 @@ PLAIN='\033[0m'
 echo_INFO="echo -e "${CYAN}INFO${PLAIN}""
 echo_WARNING="echo -e "${YELLOW}WARNING${PLAIN}""
 echo_ERROR="echo -e "${RED}ERROR${PLAIN}""
+
 ########### Function ###########
+
+# 初始化脚本
 init_run() {
     # 获取运行环境信息
-    if grep -q "SUPER AWESOME" /proc/version; then
-        ish_ver=$(cat /proc/ish/version | awk '{print $2 " " $3}')
-    else
+    ish_type=$(cat /proc/ish/version 2>/dev/null | awk '{print $1}')
+    ish_ver=$(cat /proc/ish/version 2>/dev/null | awk '{print $2 " " $3}')
+    if [[ -z "$ish_ver" ]]; then	
         ish_ver=$(sed 's/.* iSH \([0-9]\.[0-9]\.[0-9]\) (\([0-9]\{1,\}\)) \(.*\)/\1 (\2)/' /proc/version)
     fi
-    if ! [[ $ish_ver =~ ^[0-9]+\.[0-9]+\.[0-9]+\ \([0-9]+\)$ ]]; then
-    $echo_ERROR 未知的iSH版本，脚本尚未支持 && exit 1
+    if ! [[ "$ish_type" =~ "iSH" ]]; then
+        $echo_ERROR 未知的iSH版本，脚本尚未支持 && exit 1
     fi
     alpine_version=$(awk -F. '{if ($1 == 3) print "v3."$2}' /etc/alpine-release)
+    if [[ -z "$alpine_version" ]]; then
+        $echo_ERROR 非alpine系统，脚本不支持运行 && exit 1
+    fi
     local init_check=1 && check_connection
     [[ $No_Network -eq 1 ]] && check_location
     # 第一次初始化脚本
@@ -48,31 +51,32 @@ init_run() {
         $echo_INFO 检测到第一次运行脚本，正在初始化
         [[ $No_Network -eq 1 ]] && $echo_ERROR 无网络连接，初始化失败，脚本自动退出 && exit 1
         timeout 30s apk add -q ${inite_repo}
-        have_been_timeout=$?
-        if [ "$have_been_timeout" = 143 ]; then
-            $echo_WARNING 超过30s未完成安装，可能是源下载太慢，进行镜像源替换 && init_run_WARNING=1
-            mirrors_manager 3
-            rm -rf /etc/apk/repositories /ish
-            echo "http://mirrors.aliyun.com/alpine/$alpine_version/main" >>/etc/apk/repositories
-            echo "http://mirrors.aliyun.com/alpine/$alpine_version/community" >>/etc/apk/repositories
+        Timeout_or_not=$?
+        if [ "$Timeout_or_not" = 143 ]; then
+            $echo_WARNING 超过30s未完成安装，可能是源访问太慢，尝试使用镜像源安装 && init_run_WARNING=1
+            rm -rf /etc/apk/repositories # 这里临时换源,不用删除/ish
+            echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/main" >>/etc/apk/repositories
+            echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/community" >>/etc/apk/repositories
             $echo_INFO 再次尝试安装所需的软件包
             apk update &>/dev/null
             apk add -q ${inite_repo}
-            have_been_timeout=$?
+            Timeout_or_not=$?
         fi
-        if [ "$have_been_timeout" = 0 ]; then
+        if [ "$Timeout_or_not" = 0 ]; then
             sed -i "s#::sysinit:/sbin/openrc sysinit#::sysinit:/sbin/openrc#g" /etc/inittab
-            echo inited_version=$tools_version >>/etc/iSH-Tools/tools_inited
+            echo inited_version=\"$tools_version\" >>/etc/iSH-Tools/tools_inited
             echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
         fi
     fi
-} # 初始化脚本
+}
+
+# 检查网络状况
 check_connection() {
-    ping_host() {
-        ping -4 -c 1 -w 1 -A $HOST &>/dev/null
-    }
+    ping -4 -c 1 -w 1 -A $HOST &>/dev/null &
+    ping_pid=$!
     $echo_INFO 正在检查网络状况...
-    if ! ping_host; then
+    wait $ping_pid
+    if [ $? -ne 0 ]; then
         No_Network=1
         if [ "$init_check" = 1 ];then
             $echo_WARNING 网络连接异常，尝试更改DNS重新测试
@@ -87,20 +91,72 @@ check_connection() {
             init_run_WARNING=1
         fi
     fi
-} # 检查网络状况
+} 
+
+# 检查所属地区，决定是否使用镜像站
 check_location() {
-    location=$(wget -qO- https://cf-ns.com/cdn-cgi/trace | awk -F'=' '/^loc=/{print $2}')
-    if [[ "$location" == "CN" ]]; then
-        $echo_INFO "根据当前网络环境，自动更换 APK 镜像源并使用 GitHub 镜像站"
-        github_url="https://ghproxy.com/https://github.com"
-        REMOTE=https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git
-        rm -rf /etc/apk/repositories /ish
-        echo "http://mirrors.aliyun.com/alpine/$alpine_version/main" >>/etc/apk/repositories
-        echo "http://mirrors.aliyun.com/alpine/$alpine_version/community" >>/etc/apk/repositories
+    location_cf=$(wget -qO- https://cf-ns.com/cdn-cgi/trace | awk -F'=' '/^loc=/{print $2}')
+	location_ipip=$(wget -qO- https://myip.ipip.net/ | awk -F '：' '{print $3}' | awk -F ' ' '{print $1}')
+    if [[ "$location_cf" == "CN" || "$location_ipip" == "中国" ]]; then
+        $echo_INFO "根据当前网络环境，建议更换镜像源并使用GitHub镜像站"
+        read -p "[*] 是否要使用镜像源? [Y/N]" user_choice
+        case $user_choice in
+        [yY])
+            github_url="https://ghproxy.com/https://github.com"
+            REMOTE="https://ghproxy.com/https://github.com/ohmyzsh/ohmyzsh.git"
+            rm -rf /etc/apk/repositories /ish
+            echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/main" >>/etc/apk/repositories
+            echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/community" >>/etc/apk/repositories
+            ;;
+        [nN]|*)
+            $echo_INFO 已选择不使用镜像源，如果遇到访问缓慢可以使用脚本工具来更改
+            ;;
+        esac
     fi
-} # 检查所属地区，决定是否使用镜像站
+}
+
+# 使用说明
+usage() {
+    cat <<-EOF
+	iSH-Tools $tools_version
+
+	Usage: 
+	    -cs , --change_sources | 一键镜像源测速&更换
+	    -iv , --install_vnc    | 一键安装VNC服务和awesome桌面环境
+	    -is , --install_sshd   | 一键安装SSH服务并设为自启动
+	    -ot , --other_tools    | 其他工具
+	    -h  , --help           | 显示帮助信息
+	    
+	EOF
+
+    exit 1
+}
+
+# 函数入口
+ish_main() {
+    case "$1" in
+    -h | --help)
+        usage ;;
+    -cs | --change_sources)
+        mirrors_manager 1 ;;
+    -iv | --install_vnc)
+        quick=1 do_type=vnc services=VNC services_port=5900 services_name=x11vnc DE=1 && config_services 1;;
+    -is  | --install_sshd)
+        quick=1 do_type=ssh services=SSH services_port=22 services_name=sshd DE=3 && config_services 1;;
+    *)
+        while :; do
+            main_menu
+        done
+        ;;
+    esac
+}
+
+# 镜像源管理
 mirrors_manager() {
     local repos_c="${YELLOW}repositories.bk${PLAIN}"
+	local file_path="/alpine/v3.14/releases/x86/"
+	local file_name="alpine-minirootfs-3.14.0-x86.tar.gz"
+	local speed_test_log="/tmp/speed_test.log"
     # 镜像源列表
     declare -A mirrors=(
         [1]="官方源:http://dl-cdn.alpinelinux.org"
@@ -115,8 +171,10 @@ mirrors_manager() {
         [10]="腾讯源:http://mirrors.cloud.tencent.com"
         [11]="阿里源:http://mirrors.aliyun.com"
     )
+	# 镜像源测速
     mirrors_speedtest() {
-        mirrors_speedtest_spin() {
+        # 旋转动画
+		mirrors_speedtest_spin() {
             local LC_CTYPE=C spin='-\|/' i=0
             mirrors_speedtest_wget "$@" &
             tput civis
@@ -128,8 +186,9 @@ mirrors_manager() {
             done
             tput cnorm
             wait $!
-        } # 旋转动画
-        mirrors_speedtest_wget() {
+        } 
+        # 测速功能
+		mirrors_speedtest_wget() {
             local output=$(LANG=C wget -4O /dev/null -T30 "$1" 2>&1)
             local speed=$(printf '%s' "$output" | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}')
             local ipaddress=$(printf '%s' "$output" | awk -F'|' '/Connecting to .*\|([^\|]+)\|/ {print $2}' | tail -1)
@@ -140,8 +199,10 @@ mirrors_manager() {
             printf "${YELLOW}%-12s${GREEN}%-19s${CYAN}%-12s${PLAIN}%-11s${RED}%-10s${PLAIN}\n" "$2" "${ipaddress}" "${size}" "${time}" "${speed}"
             speed=$(echo "$speed" | awk '{if ($0 ~ /MB\/s/) printf "%.0fKB/s", $1*1024; else print}')
             echo "$2 ${mirrors[$key]#*:} $speed" >>$speed_test_log
-        } # 测速功能
+        } 
         clear
+        check_connection
+        [[ $No_Network -eq 1 ]] && $echo_ERROR 无网络连接，无法进行优选 && return
         $echo_INFO "正在进行镜像源优选，会需要一些时间"
         echo -e "\n[测试信息]"
         echo -e "系统信息: ${YELLOW}Alpine ${alpine_version}${PLAIN}"
@@ -150,12 +211,13 @@ mirrors_manager() {
         rm -f $speed_test_log
         printf "%-13s%-21s%-16s%-15s%-10s\n" "镜像站点" "IPv4地址" "文件大小" "下载用时" "下载速度"
         for key in $(seq 1 11); do
-            mirrors_speedtest_spin "${mirrors[$key]#*:}${file_path}" "${mirrors[$key]%:h*}"
+            mirrors_speedtest_spin "${mirrors[$key]#*:}${file_path}${file_name}" "${mirrors[$key]%:h*}"
         done
         sort -k 3 -n -r -o $speed_test_log $speed_test_log
         mirror_url=$(head -n 1 $speed_test_log | cut -d ' ' -f2)
         mirror_name=$(head -n 1 $speed_test_log | cut -d ' ' -f1)
-    } # 镜像源测速
+    }
+	# 备份源文件
     backup_sources() {
         if [ ! -e /etc/apk/repositories.bk ]; then
             $echo_INFO "创建 ${repos_c} 备份"
@@ -171,7 +233,8 @@ mirrors_manager() {
                 $echo_INFO "不覆盖 ${repos_c} 备份";;
             esac
         fi
-    } # 备份源文件
+    }
+	# 恢复源文件
     restore_sources(){
         if [ ! -e /etc/apk/repositories.bk ]; then
             $echo_INFO "没找到 ${repos_c} 备份文件，需要先备份才能恢复"
@@ -179,7 +242,8 @@ mirrors_manager() {
             mv /etc/apk/repositories.bk /etc/apk/repositories
             $echo_INFO 已恢复源信息
         fi
-    } # 恢复源文件
+    }
+	# 更换源文件
     change_sources() {
         $echo_INFO "是否将 ${YELLOW}$2${PLAIN} 作为镜像源使用? [y/n]"
         read -n 1 user_choice
@@ -193,9 +257,10 @@ mirrors_manager() {
             apk update -q
             $echo_INFO "源信息修改完成";;
         [nN]|*)
-            $echo_INFO "源信息未做更改";;
+            clear && $echo_INFO "源信息未做更改\n" && sleep 0.5;;
         esac
-    } # 更换源文件
+    }
+	# 选择镜像源
     select_sources() {
         while :; do
             sleep 0.1
@@ -209,12 +274,11 @@ mirrors_manager() {
             elif [[ ! $mirror =~ ^[0-9]+$ ]]; then
                 clear && $echo_ERROR "请输入正确的数字!"
             elif [ "$mirror" = 0 ]; then
-                check_connection 
-                [[ $No_Network -eq 1 ]] && $echo_ERROR 无网络连接，无法进行优选 && return
                 mirrors_speedtest
+                [[ $No_Network -eq 1 ]] && return
                 break
             elif [[ ! -v mirrors[$mirror] ]]; then
-                clear && $echo_ERROR "输入的数字不在选项中，请重新输入！"
+                clear && $echo_ERROR "输入的数字不在选项中，请重新输入！" && sleep 0.5
             else
                 mirror_name="${mirrors[$mirror]%:h*}"
                 mirror_url="${mirrors[$mirror]#*:}"
@@ -222,13 +286,16 @@ mirrors_manager() {
             fi
         done
         change_sources $mirror_url $mirror_name
-    } # 选择镜像源
+    }
+
     case $1 in
     1) select_sources;;
     2) restore_sources;;
     3) backup_sources;;
     esac
-} # 镜像源管理
+}
+
+# 错误提醒与终止
 error_tips() {
     case $1 in
         1) $echo_ERROR "只能输入 [Y/N]";;
@@ -237,13 +304,9 @@ error_tips() {
     esac
     error_times=$((error_times + 1))
     [ $error_times -ge 10 ] && $echo_ERROR "已累计出现${error_times}次错误，脚本已退出" && exit 1
-} # 错误提醒与终止
-shutdown() {
-    tput cnorm
-    echo
-    $echo_INFO "感谢使用本脚本 by 路人去甲剩丙丁"
-} # 脚本退出前执行
-trap shutdown EXIT
+} 
+
+# X-org配置初始化
 xinit_vnc() {
     [ ! -e /etc/X11/xorg.conf.d ] && mkdir -p /etc/X11/xorg.conf.d
     if [ ! -e /etc/X11/xorg.conf.d/10-headless.conf ]; then
@@ -273,7 +336,7 @@ xinit_vnc() {
 		EOF
     fi
     if [ ! -e /root/.xinitrc ]; then
-        cat > /root/.xinitrc <<-'EOF'
+        cat > /root/.xinitrc <<-EOF
 		xrdb -merge ~/.Xresources
 		EOF
     fi
@@ -283,7 +346,7 @@ xinit_vnc() {
     fi
     echo "${CMD}" >>/root/.xinitrc
     if [ ! -e /root/.Xresources ]; then
-        cat >/root/.Xresources <<-'EOF'
+        cat >/root/.Xresources <<-EOF
 		Xft.dpi: 264
 		xterm*VT100.Translations: #override \
 		    Ctrl <Key> minus: smaller-vt-font() \n\
@@ -291,10 +354,12 @@ xinit_vnc() {
 		    Ctrl <Key> 0: set-vt-font(d)
 		EOF
     fi
-} # X-org配置初始化
+}
+
+# 创建服务启动文件
 create_service() {
     if [ ! -e /etc/init.d/x11vnc ]; then
-        cat >/etc/init.d/x11vnc <<-'EOF'
+        cat >/etc/init.d/x11vnc <<-EOF
 		#!/sbin/openrc-run
 		name="x11vnc"
 		description="x11vnc is a Virtual Network Computing server program to access X Windows desktop session"
@@ -322,7 +387,7 @@ create_service() {
         chmod +x /etc/init.d/x11vnc
     fi
     if [ ! -e /etc/init.d/xinit ]; then
-        cat >/etc/init.d/xinit <<-'EOF'
+        cat >/etc/init.d/xinit <<-EOF
 		#!/sbin/openrc-run
 		name="xinit"
 		description="xinit is a tool to starts the X Window System server"
@@ -342,7 +407,7 @@ create_service() {
         chmod +x /etc/init.d/xinit
     fi
     if [ ! -e /etc/init.d/get_location ]; then
-        cat >/etc/init.d/get_location <<-'EOF'
+        cat >/etc/init.d/get_location <<-EOF
 		#!/sbin/openrc-run
 		name="get_location"
 		description="get location to keep iSH running in the background"
@@ -361,11 +426,13 @@ create_service() {
 		EOF
         chmod +x /etc/init.d/get_location  
     fi
-} # 创建服务启动文件
+}
+
+# 获取位置权限，用于保持后台运行
 background_running() {
     if pgrep -f "cat /dev/location" >/dev/null; then
         $echo_INFO "iSH已经可以保持后台运行了"
-        read -p "* 是否要取消保持后台运行？[Y/N]" user_choice
+        read -p "[*] 是否要取消保持后台运行? [Y/N]" user_choice
         case $user_choice in
             [yY])
                 killall -TERM cat
@@ -399,13 +466,17 @@ background_running() {
             killall -TERM cat && rm /tmp/location.log
         fi
     fi
-} # 获取位置权限，用于保持后台运行
-install_script() {
-    clear
-    $echo_INFO "安装最新版iSH-Tools"
-    sh -c "$(wget -T15 -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"
+} 
 
-} # 安装脚本
+# 更新脚本
+update_script() {
+    clear
+    $echo_INFO "正在更新iSH-Tools..."
+    check_connection
+    sh -c "$(wget -T15 -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"
+}
+
+# 获取服务的安装和运行状态
 get_services_status() {
     for service in SSH VNC; do
         if [ -e /etc/iSH-Tools/${service}_installed ]; then
@@ -426,7 +497,9 @@ get_services_status() {
             eval ${services_name}_color="\$RED"
         fi
     done
-} # 获取服务的安装和运行状态
+}
+
+# 运行各种工具
 run_tools() {
     local tools_dir="/etc/iSH-Tools/other_tools" tool=$1
     mkdir -p "$tools_dir"
@@ -451,7 +524,9 @@ run_tools() {
         ;;
     esac
     sleep 0.5 && echo
-} # 运行各种工具
+}
+
+# 修改Root账户密码
 change_root_password() {
     $echo_INFO "正在修改root账户密码，Ctrl + C 取消修改"
     $echo_INFO "输入的密码是看不见的，需要输入两次"
@@ -461,7 +536,9 @@ change_root_password() {
     else
         $echo_INFO "修改root账户密码失败"
     fi
-} # 修改Root账户密码
+}
+
+# 配置服务(安装、删除或更改)
 config_services() {
     local do_what=$1
     local ask_info apk_repo CMD
@@ -479,7 +556,7 @@ config_services() {
         )
         print_menu 1 2 返回上层 选择桌面环境
         while :; do
-            read -p "*  请选择想${ask_info}的桌面环境[1-2]:" apk_name
+            read -p "[*]  请选择想${ask_info}的桌面环境[1-2]:" apk_name
             if [[ $apk_name == 1 || $apk_name == 2 ]]; then
                 break
             elif [[ $apk_name == "q" ]]; then
@@ -514,7 +591,9 @@ config_services() {
     esac
     clear
     do_something_command $do_what
-} # 配置服务（安装、删除或更改）
+}
+
+# 执行动作(安装、删除或更改)
 do_something_command() {
     [ -e /etc/iSH-Tools/${services}_installed ] && source /etc/iSH-Tools/${services}_installed
     do_chance() {
@@ -565,21 +644,33 @@ do_something_command() {
             fi
             $echo_INFO "正在安装${services}服务和${apk_name}"
             apk update &>/dev/null
-            timeout 120s apk add -q ${apk_repo} ${vnc_de}
-            have_been_timeout=$?
-            if [ "$have_been_timeout" = 143 ]; then
-                $echo_WARNING 超过120s未完成安装，可能是源下载太慢，进行镜像源替换
-                mirrors_manager 1
+            timeout 150s apk add -q ${apk_repo} ${vnc_de}
+            Timeout_or_not=$?
+            if [ "$Timeout_or_not" = 143 ]; then
+                $echo_WARNING 超过150s未完成安装，可能是源访问太慢，建议使用镜像源
+                rm -rf /etc/apk/repositories # 这里临时换源,不用删除/ish
+                echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/main" >>/etc/apk/repositories
+                echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/community" >>/etc/apk/repositories
                 $echo_INFO "再次尝试安装${services}服务和${apk_name}"
-                apk add -q ${apk_repo} ${vnc_de}
-                have_been_timeout=$?
+                apk update &>/dev/null
+				apk add -q ${apk_repo} ${vnc_de}
+                Timeout_or_not=$?
             fi
             if [ "$do_type" = ssh ]; then
                 [ ! -e /etc/ssh/ssh_host_ed25519_key ] && $echo_INFO "正在生成SSH安全密匙" && ssh-keygen -A
                 rm_file='/etc/ssh/sshd_config'
                 echo 'root:alpine' | chpasswd
                 sed -i "s/^#Port.*/Port 8022/g" /etc/ssh/sshd_config
-                sed -i "s/#PermitRootLogin.*/PermitRootLogin yes/g" /etc/ssh/sshd_config
+                sed -i "s/^#PermitRootLogin.*/PermitRootLogin yes/g" /etc/ssh/sshd_config
+                sed -i "s/^#ListenAddress.*/ListenAddress 0.0.0.0/g" /etc/ssh/sshd_config
+                sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+                read -p "[*] 是否需要让iSH保持后台运行?iPhone用户建议使用 [Y/N]" user_choice
+                case $user_choice in
+                [yY])
+                    background_running ;;
+                [nN]|*)
+                    $echo_INFO 已选择不让iSH保持后台运行，如需更改请从'其他工具'里查看 ;;
+                esac
                 $echo_INFO "SSH登入信息:\n用户名: root\n密码: alpine"
             fi
             if [ "$do_type" = zsh ]; then
@@ -594,10 +685,10 @@ do_something_command() {
                 sed -i 's/\/bin\/ash/\/bin\/zsh/g' /etc/passwd
                 $echo_INFO "已修改默认终端为zsh，重启iSH App以查看效果"
             fi
-            if [ "$have_been_timeout" = 0 ]; then
-                echo installed_apk_name=$apk_name > "/etc/iSH-Tools/${services}_installed"
+            if [ "$Timeout_or_not" = 0 ]; then
+                echo installed_apk_name=\"$apk_name\" > "/etc/iSH-Tools/${services}_installed"
                 echo installed_apk_repo=\"$apk_repo $vnc_de\" >> "/etc/iSH-Tools/${services}_installed"
-                echo rm_file=\'$rm_file\' >> "/etc/iSH-Tools/${services}_installed"
+                echo rm_file=\"$rm_file\" >> "/etc/iSH-Tools/${services}_installed"
                 $echo_INFO "${services}服务安装成功"
             else
                 $echo_ERROR "${services}服务安装失败"
@@ -610,7 +701,9 @@ do_something_command() {
         3) do_chance ;;
         4) chance_vnc_resolution ;;
     esac
-} # 执行动作（安装、删除或更改）
+}
+
+# 配置VNC分辨率
 config_vnc_resolution() {
     local resolution vnc_resolution
     custom_vnc_resolution() {
@@ -637,7 +730,7 @@ config_vnc_resolution() {
     )
     clear
     print_menu 1 4 返回上层 配置VNC分辨率
-    read -p "* 请选择分辨率 [1/2/3]:" var
+    read -p "[*] 请选择分辨率 [1/2/3]:" var
     case $var in
         q) clear && config_vnc_menu;;
         1) VL='"1280x720"';;
@@ -646,7 +739,9 @@ config_vnc_resolution() {
         4) custom_vnc_resolution;;
         *) error_tips 3 && config_vnc_resolution;;
     esac 
-} # 配置VNC分辨率
+}
+
+# 配置服务启动
 config_services_boot() {
     local notes="INFO ${services}服务已经启动，请用${services}客户端访问 <设备IP>:${services_port}"
     declare -A options=(
@@ -676,7 +771,7 @@ config_services_boot() {
             fi ;;
         3)
             clear
-            rc-update add ${services_name} 2>/dev/null
+            rc-update add ${services_name} default 2>/dev/null
             if [ $? = 0 ]; then
                 if ! grep -q "$notes" /etc/motd; then
                     echo "$notes" >> /etc/motd
@@ -695,8 +790,10 @@ config_services_boot() {
         q) clear && config_${do_type}_menu ;;
     esac
     config_services_boot
-} # 配置服务启动
+}
+
 ########### Menu ###########
+# 其他工具菜单
 other_tools_menu() {
     local do_type=zsh services=ZSH apk_name=ohmyzsh
     declare -A options=(
@@ -715,7 +812,9 @@ other_tools_menu() {
     *) error_tips 3;;
     esac
     other_tools_menu
-} # 其他工具菜单
+}
+
+# 管理镜像源菜单
 manage_mirror_menu() {
     declare -A options=(
     [1]="更改镜像源:mirrors_manager 1"
@@ -731,7 +830,9 @@ manage_mirror_menu() {
     *) error_tips 3 ;;
     esac
     manage_mirror_menu
-} # 管理镜像源菜单
+}
+
+# SSH配置菜单
 config_ssh_menu() {
     local do_type=ssh services=SSH services_port=8022 services_name=sshd apk_name=openssh
     declare -A options=(
@@ -748,7 +849,9 @@ config_ssh_menu() {
         *) error_tips 3 ;;
     esac
     config_ssh_menu
-} # SSH配置菜单
+}
+
+# VNC配置菜单
 config_vnc_menu() {
     local do_type=vnc services=VNC services_port=5900 services_name=x11vnc
     declare -A options=(
@@ -768,18 +871,21 @@ config_vnc_menu() {
         *) error_tips 3 ;;
     esac
     config_vnc_menu 
-} # VNC配置菜单
+}
+
+# 主菜单
 main_menu() {
     declare -A options=(
     [1]="配置VNC服务:config_vnc_menu"
     [2]="配置SSH服务:config_ssh_menu"
     [3]="管理镜像源:manage_mirror_menu"
     [4]="其他工具:other_tools_menu"
-    [5]="安装脚本:install_script"
+    [5]="更新脚本:update_script"
     )
     get_services_status
     print_menu 3 5 退出脚本 主菜单
-    case $chosen_option in
+    
+	case $chosen_option in
     q)
         exit 0;;
     [1-5])
@@ -787,7 +893,9 @@ main_menu() {
     *)
         error_tips 3;;
     esac
-} # 主菜单
+}
+
+# 菜单循环打印显示函数
 print_menu() {
     sleep 0.1
     local a1=$1 b1=$2
@@ -803,12 +911,15 @@ print_menu() {
     done
     printf "| q:${PURPLE}%-28s\t${PLAIN} |\n" "$3"
     echo " ================================"
-    printf '%-30s\n' "iSH版本:$ish_ver"
-    [[ $4 == *"菜单"* ]] && read -p "*  请选择需要的功能 [$a1-$b1]:" chosen_option
-} # 菜单循环打印显示函数
+    printf '%-30s\n' "${ish_type}版本:${ish_ver}"
+    if [[ "$ish_type" == "iSH-AOK" ]]; then
+        $echo_WARNING 检测为iSH-AOK版本，脚本尚未测试，请谨慎使用
+    fi
+    [[ $4 == *"菜单"* ]] && read -p "[*]  请选择需要的功能 [$a1-$b1]:" chosen_option
+}
 
 ########### Main ###########
-init_run && [[ $init_run_WARNING -ne 1 ]] && clear
-while :; do
-    main_menu
-done
+if [[ "$1" != *"-h"* ]]; then
+	init_run && [[ $init_run_WARNING -ne 1 ]] && clear
+fi
+ish_main $@

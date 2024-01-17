@@ -42,8 +42,19 @@ iSH-Tools主要用于在iSH快捷方便地安装管理SSH和VNC，同时还提�
 > 1.全新手搓的交互菜单<br/>
 > 2.新内置3个工具 coremark、 cpuid2cpuflags 和 oh-my-zsh<br/>
 > 3.大幅改进服务 安装&运行 状态提示，让其更直观，同时也有选项对其进行更改，无需手敲代码<br/>
-> 4.<提示>现在有颜色了，更好理解重要等级
+> 4.<提示>现在有颜色了，更好理解重要等级<br/>
 
+* 2024-01-17
+> 更新3.3版本<br/>
+> 优化：<br/>
+> 1.改进部分提示，比如安装SSH服务后会提示用户保持iSH后台运行<br/>
+> 2.尝试修改用户地区的检测机制<br/>
+> 3.对包安装的超时操作进行了调整，改使用清华源作为默认的镜像源<br/>
+> 改进：<br/>
+> 1.尝试对iSH-AOK进行初步的适配<br/>
+> 2.加入了参数模式，使用 -h，--help 来查看具体内容<br/>
+> 提醒：<br/>
+> 后面准备处理一下/etc/iSH-Tools/配置文件存储混乱的问题，3.1之前的版本升级可能会提示需要再次初始化脚本<br/>
 
 
 # 脚本主要功能
@@ -61,11 +72,11 @@ iSH-Tools主要用于在iSH快捷方便地安装管理SSH和VNC，同时还提�
 
 # 如何使用
 
-* 一键运行脚本命令（3.1版本之前）
+* 一键运行脚本命令（海外用户使用）
 
-`apk add bash && wget https://github.com/lurenJBD/iSH-Tools/raw/main/iSH-Tools.sh -qO iSH-Tools.sh && bash iSH-Tools.sh `
+`sh -c "$(wget -qO- https://github.com/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"`
 
-* 一键运行脚本命令（3.2版本之后，推荐访问Github困难用户使用）
+* 一键运行脚本命令（推荐访问Github困难用户使用）
 
 `sh -c "$(wget -qO- https://ghproxy.com/https://github.com/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"`
 
