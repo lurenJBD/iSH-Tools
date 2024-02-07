@@ -78,7 +78,7 @@ iSH-Tools主要用于在iSH快捷方便地安装管理SSH和VNC，同时还提�
 
 * 一键运行脚本命令（推荐访问Github困难用户使用）
 
-`sh -c "$(wget -qO- https://ghproxy.com/https://github.com/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"`
+`sh -c "$(wget -qO- https://mirror.ghproxy.com/https://github.com/lurenJBD/iSH-Tools/raw/main/iSH-Tools-Setup-CN.sh)"`
 
 # 注意事项
 
