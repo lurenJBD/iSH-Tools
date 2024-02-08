@@ -75,6 +75,19 @@ run_timer() {
     done
 }
 
+# 安装&检查软件包
+set_apk_repo() {
+    run_timer "apk add" 30 "可能是源下载太慢，建议使用镜像源" &
+    apk add -q ${inite_repo}
+    exit_code=$?
+    if [ $exit_code = 0 ]; then
+        sed -i "s#::sysinit:/sbin/openrc sysinit#::sysinit:/sbin/openrc#g" /etc/inittab
+        echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
+    else
+        $echo_ERROR "安装软件包失败，请检查网络并重试" && exit 1
+    fi
+}
+
 # 初始化并安装最新版iSH-Tools
 run_main() {
     # 获取运行环境信息
@@ -113,15 +126,7 @@ run_main() {
     if [ ! -e /etc/iSH-Tools/tools_inited ];then
         mkdir -p /etc/iSH-Tools
         $echo_INFO 正在安装需要的软件包...
-        run_timer "apk add" 30 "可能是源下载太慢，建议使用镜像源" &
-        apk add -q ${inite_repo}
-        exit_code=$?
-        if [ $exit_code = 0 ]; then
-            sed -i "s#::sysinit:/sbin/openrc sysinit#::sysinit:/sbin/openrc#g" /etc/inittab
-            echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
-        else
-            $echo_ERROR "安装软件包失败，请检查网络并重试" && exit 1
-        fi
+        set_apk_repo
     else
         source /etc/iSH-Tools/tools_inited
         if [[ -n "$inited_version" ]]; then
@@ -130,8 +135,7 @@ run_main() {
                 $echo_INFO 检查到新版本，自动更新中...
                 installed_tip="已经更新为"
                 rm -f /etc/iSH-Tools/tools_inited /usr/local/bin/iSH-Tools
-                apk add -q ${inite_repo}
-                echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
+                set_apk_repo
             fi
         fi
     fi
