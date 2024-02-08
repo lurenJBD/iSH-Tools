@@ -1,9 +1,8 @@
 #!/bin/sh
-# Moded by lurenJBD 2024.02.07
+# Moded by lurenJBD 2024.02.08
 # iSH-Tools by lurenJBD 2020.10.17
 
 ########### Variable ###########
-tools_setup_version="3.0"
 github_url="https://github.com"
 inite_repo="wget ncurses openrc bash"
 HOST="baidu.com"
@@ -107,8 +106,7 @@ run_main() {
         lastest_version=$(wget -T10 -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/lastest_version 2>/dev/null | awk -F'=' '/^lastest_version=/{print $2}')
         installed_tip="已经安装最新版本"
         if [[ -z "$lastest_version" ]]; then
-            $echo_WARNING "获取 iSH-Tools 最新版本号失败，将使用安装工具的版本号代替"
-            lastest_version=$tools_setup_version
+            $echo_ERROR "获取 iSH-Tools 最新版本号失败，请检查网络并重试" && exit 1
         fi
     fi
     # 安装基础依赖包
@@ -126,12 +124,15 @@ run_main() {
         fi
     else
         source /etc/iSH-Tools/tools_inited
-        if [ "$lastest_version" != "$inited_version" ]; then
-            $echo_INFO 检查到新版本，自动更新中...
-            installed_tip="已经更新为"
-            rm -f /etc/iSH-Tools/tools_inited /usr/local/bin/iSH-Tools
-            apk add -q ${inite_repo}
-            echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
+        if [[ -n "$inited_version" ]]; then
+            $echo_INFO "检测到已安装 iSH-Tools $inited_version 版本"
+            if [ $(echo "$lastest_version > $inited_version" | bc) -eq 1 ]; then
+                $echo_INFO 检查到新版本，自动更新中...
+                installed_tip="已经更新为"
+                rm -f /etc/iSH-Tools/tools_inited /usr/local/bin/iSH-Tools
+                apk add -q ${inite_repo}
+                echo inited_repo=\"$inite_repo\" >>/etc/iSH-Tools/tools_inited
+            fi
         fi
     fi
     # 下载 iSH-Tools
