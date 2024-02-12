@@ -1,5 +1,5 @@
 #!/bin/sh
-# Moded by lurenJBD 2024.02.09
+# Moded by lurenJBD 2024.02.10
 # iSH-Tools by lurenJBD 2020.10.17
 
 ########### Variable ###########
@@ -75,7 +75,7 @@ run_timer() {
     local timeout_tip=$3
     local execution_time=0
     
-    wait $command_pid 2>/dev/null
+    wait $command_pid
 
     while kill -0 $command_pid 2>/dev/null; do
         sleep 1
@@ -169,12 +169,15 @@ run_main() {
     fi
     # 下载 iSH-Tools
     if [ ! -e /usr/local/bin/iSH-Tools ];then
+        printf_tips info "正在下载 iSH-Tools ..."
         wget -T15 -qO /usr/local/bin/iSH-Tools ${github_url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-CN.sh
         if [ $? = 0 ]; then
             echo inited_version=$lastest_version >>/etc/iSH-Tools/tools_inited
             chmod +x /usr/local/bin/iSH-Tools
+            $echo_OK
         else
             rm -f /usr/local/bin/iSH-Tools
+            $echo_ERROR
             printf_tips error "下载 iSH-Tools 失败，请检查网络并重试" "\n" && exit 1
         fi
     fi
