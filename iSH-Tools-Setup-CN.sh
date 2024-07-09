@@ -1,11 +1,11 @@
 #!/bin/sh
-# Moded by lurenJBD 2024.02.10
+# Moded by lurenJBD 2024.07.09
 # iSH-Tools by lurenJBD 2020.10.17
 
 ########### Variable ###########
 github_url="https://github.com"
 inite_repo="wget ncurses openrc bash"
-HOST="baidu.com"
+HOST="www.baidu.com"
 NAMESERVER="223.5.5.5"
 
 RED='\033[0;31m'
@@ -31,24 +31,36 @@ printf_tips() {
 # 检查网络状况
 check_connection() {
     ping_host() {
-        ping -4 -c 1 -w 1 -A $HOST &>/dev/null
+        ping -4 -c 1 -w 1 -A $1 &>/dev/null
+        [ $? -eq 0 ] && ping_success=true
     }
-    printf_tips info "正在检查网络状况..." 
-    if ! ping_host; then
-        $echo_ERROR && printf_tips warning "网络连接检测失败，尝试更改DNS再次测试..."
-        cp /etc/resolv.conf /etc/resolv.conf.bak
+    DNSADDR=$(grep '^nameserver' /etc/resolv.conf | head -n 1 | awk '{print $2}')
+    if [ ! -n "$DNSADDR" ]; then
+        printf_tips warning "未设置DNS地址，自动指定DNS为${NAMESERVER}"
         echo "nameserver ${NAMESERVER}" > /etc/resolv.conf
-        if ! ping_host; then
-            mv /etc/resolv.conf.bak /etc/resolv.conf
-            $echo_ERROR && return 1
-        fi
+        DNSADDR=$NAMESERVER
+    fi
+    printf_tips info "正在检查网络状况..."
+    ping_success=false
+    if which nslookup >/dev/null 2>&1 ; then
+        ipv4_addresses=$(nslookup $HOST $DNSADDR)
+        for ip in $ipv4_addresses; do
+            ping_host $ip 
+            [ "$ping_success" = "true" ] && break
+        done
+    else
+        ping_host $HOST
+    fi
+    if ! $ping_success; then
+        $echo_ERROR && return 1
     fi
     $echo_OK
+
 }
 
 # 检查所属地区，决定是否使用镜像站
 check_location() {
-    location=$(wget -qO- https://cf-ns.com/cdn-cgi/trace | awk -F'=' '/^loc=/{print $2}')
+    location=$(wget -T10 -qO- https://cf-ns.com/cdn-cgi/trace | awk -F'=' '/^loc=/{print $2}')
     if [[ "$location" == "CN" ]]; then
         printf_tips info "根据当前网络环境，建议临时更换镜像源并使用GitHub镜像站" "\n"
         read -p "[*]  是否要使用镜像源? [Y/N]" user_choice && printf '\033[A' && printf '\r\033[K'
@@ -75,7 +87,7 @@ run_timer() {
     local timeout_tip=$3
     local execution_time=0
     
-    wait $command_pid
+    wait $command_pid 2>/dev/null
 
     while kill -0 $command_pid 2>/dev/null; do
         sleep 1
@@ -166,6 +178,18 @@ run_main() {
                 fi
             fi
         fi
+    fi
+    # 下载 工具文件
+    if [ ! -f "/etc/iSH-Tools/get_local_ip" ]; then
+        printf_tips info "正在下载 iSH-Tools 工具文件..."
+        wget -T15 -qO /etc/iSH-Tools/get_local_ip ${github_url}/lurenJBD/iSH-Tools/releases/download/Tools/get_local_ip
+        if [ $? = 0 ]; then
+            chmod +x /etc/iSH-Tools/get_local_ip
+            $echo_OK
+        else
+            rm -f /etc/iSH-Tools/get_local_ip
+            $echo_ERROR
+        fi 
     fi
     # 下载 iSH-Tools
     if [ ! -e /usr/local/bin/iSH-Tools ];then
