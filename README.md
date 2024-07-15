@@ -120,7 +120,7 @@ iSH-Tools主要用于在iSH快捷方便地安装管理SSH和VNC，同时还提�
 | `Mirror_Url` | github镜像站，默认为 https://mirror.ghproxy.com/https://github.com | 用于加速github访问 |
 | `Mirror_Repo` | 默认替换的镜像源，默认为 http://mirrors.tuna.tsinghua.edu.cn | 用于加速apk源访问 |
 | `Bypass_Check` | 1：跳过网络&地区检查、Net：只跳过网络检查、Loc：只跳过地区检查，默认为 0 都不跳过| 跳过脚本内置检测功能 |
-| `Dev_Mode` | 1：开启开发者模式。允许允许在非iSH的Alpine下，默认为 0 不开启 | 用于在其他Alpine下使用 |
+| `Dev_Mode` | 1：开启开发者模式。允许在非iSH的Alpine下运行，默认为 0 不开启 | 用于在其他Alpine下使用 |
 
 ## 例子
 ``` 
@@ -133,7 +133,7 @@ Bypass_Check=Net iSH-Tools
 # 进入开发者模式 (在iSH里不会有效果)
 Dev_Mode=1 iSH-Tools
 
-# 让变量长久生效
+# 让变量长久生效 (本次会话中有效)
 export Bypass_Check=1
 
 # 让变量自动生效，以ash为例子
