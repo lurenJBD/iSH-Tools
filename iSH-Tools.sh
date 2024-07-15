@@ -16,6 +16,7 @@ speed_test_log="/tmp/speed_test.log"
 file_path="/alpine/v3.14/releases/x86/alpine-minirootfs-3.14.0-x86.tar.gz"
 file_name="alpine-minirootfs-3.14.0-x86.tar.gz"
 error_times=0
+
 # 终端颜色
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -27,6 +28,7 @@ PLAIN='\033[0m'
 echo_INFO="echo -e "${CYAN}INFO${PLAIN}""
 echo_WARNING="echo -e "${YELLOW}WARNING${PLAIN}""
 echo_ERROR="echo -e "${RED}ERROR${PLAIN}""
+
 ########### Function ###########
 init_run() {
     # 获取运行环境信息
