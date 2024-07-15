@@ -3,11 +3,14 @@
 # iSH-Tools by lurenJBD 2020.10.17
 
 ########### Variable ###########
-github_url="https://github.com"
-inite_repo="wget ncurses openrc bash"
-HOST="www.baidu.com"
-NAMESERVER="223.5.5.5"
+HOST="${HOST:="www.baidu.com"}"
+NAMESERVER="${NAMESERVER:="223.5.5.5"}"
+Github_Url="${Github_Url:="https://github.com"}"
+Mirror_Url="${Mirror_Url:="https://mirror.ghproxy.com/https://github.com"}"
+Mirror_Repo="${Mirror_Repo:="http://mirrors.tuna.tsinghua.edu.cn"}" # 默认替换的镜像源链接
+Bypass_Check="${Bypass_Check:=0}" # 1：跳过网络&地区检查 Net：只跳过网络检查 Loc：只跳过地区检查
 
+inite_repo="wget ncurses openrc bash"
 RED='\033[0;31m'
 GREEN='\033[32m'
 YELLOW='\033[0;33m'
@@ -30,20 +33,28 @@ printf_tips() {
 
 # 检查网络状况
 check_connection() {
+    [[ $enable_check_connection -eq 0 ]] && return 0
     ping_host() {
-        ping -4 -c 1 -w 1 -A $1 &>/dev/null
-        [ $? -eq 0 ] && ping_success=true
+        ping -4 -c 1 -w 1 -A $1 &>/dev/null && ping_success=true
     }
-    DNSADDR=$(grep '^nameserver' /etc/resolv.conf | head -n 1 | awk '{print $2}')
+    nslookup_addr() {
+        ipv4_addresses=$(nslookup $1 $2 2>/dev/null | awk '/^Address: / { split($2, parts, ":"); if (parts[1] ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) print parts[1] }')
+    }
+    DNSADDR=$(grep '^nameserver' /etc/resolv.conf 2>/dev/null | head -n 1 | awk '{print $2}')
     if [ ! -n "$DNSADDR" ]; then
-        printf_tips warning "未设置DNS地址，自动指定DNS为${NAMESERVER}"
+        printf_tips warning "未设置DNS地址，自动指定DNS为${NAMESERVER}" "\n"
         echo "nameserver ${NAMESERVER}" > /etc/resolv.conf
         DNSADDR=$NAMESERVER
     fi
     printf_tips info "正在检查网络状况..."
     ping_success=false
     if which nslookup >/dev/null 2>&1 ; then
-        ipv4_addresses=$(nslookup $HOST $DNSADDR)
+        nslookup_addr $HOST $DNSADDR
+        if [ ! -n "$ipv4_addresses" ]; then
+            printf_tips warning "DNS解析失败，修改DNS为${NAMESERVER}再次尝试" "\n"
+            nslookup_addr $HOST $NAMESERVER
+            echo "nameserver ${NAMESERVER}" > /etc/resolv.conf
+        fi
         for ip in $ipv4_addresses; do
             ping_host $ip 
             [ "$ping_success" = "true" ] && break
@@ -51,25 +62,26 @@ check_connection() {
     else
         ping_host $HOST
     fi
-    if ! $ping_success; then
-        $echo_ERROR && return 1
-    fi
+    [ "$ping_success" = "false" ] && $echo_ERROR && return 1
     $echo_OK
-
 }
 
 # 检查所属地区，决定是否使用镜像站
 check_location() {
-    location=$(wget -T10 -qO- https://cf-ns.com/cdn-cgi/trace | awk -F'=' '/^loc=/{print $2}')
-    if [[ "$location" == "CN" ]]; then
+    [[ $enable_check_location -eq 0 ]] && return 0
+    location=$(wget -T10 -qO- https://cf-ns.com/cdn-cgi/trace 2>/dev/null | awk -F'=' '/^loc=/{print $2}')
+    if [ -z "$location" ]; then
+        location=$(wget -T10 -qO- https://myip.ipip.net/ 2>/dev/null | awk -F '：' '{print $3}' | awk -F ' ' '{print $1}')
+    fi
+    if [[ "$location" == "CN" || "$location" == "中国" ]]; then
         printf_tips info "根据当前网络环境，建议临时更换镜像源并使用GitHub镜像站" "\n"
         read -p "[*]  是否要使用镜像源? [Y/N]" user_choice && printf '\033[A' && printf '\r\033[K'
         case $user_choice in
         [yY])
-            github_url="https://mirror.ghproxy.com/https://github.com"
-            rm -rf /etc/apk/repositories
-            echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/main" >>/etc/apk/repositories
-            echo "http://mirrors.tuna.tsinghua.edu.cn/alpine/$alpine_version/community" >>/etc/apk/repositories
+            Github_Url=$Mirror_Url
+            mv /etc/apk/repositories /etc/apk/repositories-tmp.bak
+            echo "${Mirror_Repo}/alpine/${alpine_version}/main" >> /etc/apk/repositories
+            echo "${Mirror_Repo}/alpine/${alpine_version}/community" >> /etc/apk/repositories
             ;;
         [nN]|*)
             printf_tips warning "已选择不使用镜像源，如果访问缓慢可以再次运行本工具修改" "\n"
@@ -117,6 +129,9 @@ set_apk_repo() {
 # 脚本退出前执行
 shutdown() {
     printf '\r\033[K'
+    if [ -e /etc/apk/repositories-tmp.bak ]; then
+        mv /etc/apk/repositories-tmp.bak /etc/apk/repositories
+    fi
 }
 trap shutdown EXIT
 
@@ -142,12 +157,20 @@ run_main() {
         source /opt/iSH-VNC/VNC_installed_name && echo installed_apk_name=$installed_DE_name >> /etc/iSH-Tools/VNC_installed
         rm -rf /opt/iSH-VNC
     fi
+    enable_check_connection=1; enable_check_location=1; 
+    case $Bypass_Check in
+        All|true|1) enable_check_connection=0; enable_check_location=0 ;;
+        Net|network) enable_check_connection=0 ;;
+        Loc|location) enable_check_location=0 ;;
+        None|false|0) ;; # Defaults
+        *) unset Bypass_Check ;;
+    esac
     # 进行网络连接检查
     check_connection || { printf_tips error "无网络，无法安装/更新 iSH-Tools" "\n" && exit 1; }
     check_location
     printf_tips info "正在获取 iSH-Tools 最新版本号..."
-    lastest_version=$(wget -T10 -qO- ${github_url}/lurenJBD/iSH-Tools/raw/main/lastest_version 2>/dev/null | awk -F'=' '/^lastest_version=/{print $2}')
-    installed_tip="已经安装最新版本"
+    lastest_version=$(wget -T10 -qO- ${Github_Url}/lurenJBD/iSH-Tools/raw/main/lastest_version 2>/dev/null | awk -F'=' '/^lastest_version=/{print $2}')
+    installed_tip="安装"
     if [[ -z "$lastest_version" ]]; then
         $echo_ERROR && printf_tips error "获取 iSH-Tools 最新版本号失败，请检查网络并重试" "\n" && exit 1
     else
@@ -163,9 +186,9 @@ run_main() {
         if [[ -n "$inited_version" ]]; then
             printf_tips info "检测到已安装 iSH-Tools $inited_version 版本" "\n"
             if [ $(echo "$lastest_version > $inited_version" | bc) -eq 1 ]; then
-                printf_tips info "检查到新版本，自动更新中..."
+                printf_tips info "检查到新版本 ${lastest_version}" "\n"
                 rm -f /usr/local/bin/iSH-Tools && sed -i '/inited_version/d' /etc/iSH-Tools/tools_inited
-                installed_tip="已经更新为"
+                installed_tip="更新"
                 for word in $inite_repo; do
                     if ! echo "$inited_repo" | grep -q "$word"; then
                         need_inite_repo=1
@@ -177,12 +200,16 @@ run_main() {
                     set_apk_repo
                 fi
             fi
+            if [ $(echo "$lastest_version < $inited_version" | bc) -eq 1 ]; then
+                printf_tips info "远端最新版本为${lastest_version}, 低于已安装版本, 疑似数据错乱, 脚本自动退出" "\n"
+                return 1
+            fi
         fi
     fi
     # 下载 工具文件
     if [ ! -f "/etc/iSH-Tools/get_local_ip" ]; then
         printf_tips info "正在下载 iSH-Tools 工具文件..."
-        wget -T15 -qO /etc/iSH-Tools/get_local_ip ${github_url}/lurenJBD/iSH-Tools/releases/download/Tools/get_local_ip
+        wget -T15 -qO /etc/iSH-Tools/get_local_ip ${Github_Url}/lurenJBD/iSH-Tools/releases/download/Tools/get_local_ip
         if [ $? = 0 ]; then
             chmod +x /etc/iSH-Tools/get_local_ip
             $echo_OK
@@ -193,8 +220,8 @@ run_main() {
     fi
     # 下载 iSH-Tools
     if [ ! -e /usr/local/bin/iSH-Tools ];then
-        printf_tips info "正在下载 iSH-Tools ..."
-        wget -T15 -qO /usr/local/bin/iSH-Tools ${github_url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-CN.sh
+        printf_tips info "正在${installed_tip} iSH-Tools ..."
+        wget -T15 -qO /usr/local/bin/iSH-Tools ${Github_Url}/lurenJBD/iSH-Tools/raw/main/iSH-Tools-CN.sh
         if [ $? = 0 ]; then
             echo inited_version=$lastest_version >>/etc/iSH-Tools/tools_inited
             chmod +x /usr/local/bin/iSH-Tools
@@ -205,7 +232,7 @@ run_main() {
             printf_tips error "下载 iSH-Tools 失败，请检查网络并重试" "\n" && exit 1
         fi
     fi
-    printf_tips info "${installed_tip} iSH-Tools ${lastest_version}，输入 iSH-Tools 开始使用" "\n"
+    printf_tips info "${installed_tip} iSH-Tools ${lastest_version} 成功，输入 iSH-Tools 开始使用" "\n"
 }
 
 ########### Main ###########
