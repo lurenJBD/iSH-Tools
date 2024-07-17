@@ -239,7 +239,7 @@ repo_mirrors_manager() {
     unset user_choice
     # 镜像源列表
     declare -A mirrors=(
-        [1]="官方源:http://dl-cdn.alpinelinux.org"
+        [1]="官方源:https://dl-cdn.alpinelinux.org"
         [2]="交大源:https://mirrors.sjtug.sjtu.edu.cn"
         [3]="中科源:http://mirrors.ustc.edu.cn"
         [4]="兰大源:https://mirror.lzu.edu.cn"
@@ -269,7 +269,7 @@ repo_mirrors_manager() {
         } 
         # 测速功能
 		mirrors_speedtest_wget() {
-            local output=$(LANG=C wget -4O /dev/null -T30 "$1" 2>&1)
+            local output=$(LANG=C wget -4 -O /dev/null -T 10 -t 1 "$1" 2>&1)
             local speed=$(printf '%s' "$output" | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}')
             local ipaddress=$(printf '%s' "$output" | awk -F'|' '/Connecting to .*\|([^\|]+)\|/ {print $2}' | tail -1)
             local time=$(printf '%s' "$output" | awk -F= '/100% / {print $2}')
