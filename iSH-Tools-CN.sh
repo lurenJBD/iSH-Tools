@@ -269,12 +269,13 @@ repo_mirrors_manager() {
         } 
         # 测速功能
 		mirrors_speedtest_wget() {
-            local output=$(LANG=C wget -4 -O /dev/null -T 10 -t 1 "$1" 2>&1)
+            local output=$(timeout 16 wget -4 -O /dev/null -T 15 -t 1 "$1" 2>&1)
             local speed=$(printf '%s' "$output" | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}')
             local ipaddress=$(printf '%s' "$output" | awk -F'|' '/Connecting to .*\|([^\|]+)\|/ {print $2}' | tail -1)
             local time=$(printf '%s' "$output" | awk -F= '/100% / {print $2}')
             local size=$(printf '%s' "$output" | awk '/Length:/ {s=$3} END {gsub(/\(|\)/,"",s); print s}')
             [ -z "$speed" ] && speed=0KB/s
+            [ $speed = "'/dev/null'" ] && speed=0KB/s
             [ -z "$ipaddress" ] && ipaddress=null time=null size=null
             printf "${YELLOW}%-12s${GREEN}%-19s${CYAN}%-12s${PLAIN}%-11s${RED}%-10s${PLAIN}\n" "$2" "${ipaddress}" "${size}" "${time}" "${speed}"
             speed=$(echo "$speed" | awk '{if ($0 ~ /MB\/s/) printf "%.0fKB/s", $1*1024; else print}')
