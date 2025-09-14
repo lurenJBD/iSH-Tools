@@ -85,6 +85,20 @@ iSH-Tools主要用于在iSH快捷方便地安装管理SSH和VNC，同时还提�
 > 比如 支持跳过网络检查，地区检查等<br/>
 </details>
 
+<details>
+<summary> 2025-09-14  |  3.5 更新日志 </summary>
+  
+> 优化：<br/>
+> 1. SSH服务启动信息端口现在会读取配置文件，显示正在使用的端口，不再写死8022<br/>
+> 
+> 修复：<br/>
+> 1. 修改镜像站地址为 https://ghproxy.net<br/>
+> 
+> 其他变更：<br/>
+> 1. 修改 License 为 GPL 3.0<br/>
+> 
+</details>
+
 # 脚本主要功能
 
 - 交互式安装配置VNC服务和SSH服务

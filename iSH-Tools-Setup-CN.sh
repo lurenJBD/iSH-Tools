@@ -1,12 +1,12 @@
 #!/bin/sh
-# Moded by lurenJBD 2024.07.09
-# iSH-Tools by lurenJBD 2020.10.17
+# iSH-Tools by lurenJBD 2020-10-17
+# Moded by lurenJBD 2025-09-14
 
 ########### Variable ###########
 HOST="${HOST:="www.baidu.com"}"
 NAMESERVER="${NAMESERVER:="223.5.5.5"}"
 Github_Url="${Github_Url:="https://github.com"}"
-Mirror_Url="${Mirror_Url:="https://mirror.ghproxy.com/https://github.com"}"
+Mirror_Url="${Mirror_Url:="https://ghproxy.net/https://github.com"}"
 Mirror_Repo="${Mirror_Repo:="http://mirrors.tuna.tsinghua.edu.cn"}" # 默认替换的镜像源链接
 Bypass_Check="${Bypass_Check:=0}" # 1：跳过网络&地区检查 Net：只跳过网络检查 Loc：只跳过地区检查
 
